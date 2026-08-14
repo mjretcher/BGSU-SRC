@@ -1,0 +1,282 @@
+[
+  {
+    "item": 1,
+    "manualUrl": "https://www.concept2.com/support/indoor-rowers/model-d/manuals-and-schematics",
+    "verified": "Page live (www host; non-www 301s here); lists Model D/E Owners Manual (serial 073106+) and full schematics."
+  },
+  {
+    "item": 2,
+    "manualUrl": "https://www.concept2.com/support/indoor-rowers/model-d/manuals-and-schematics",
+    "verified": "Same verified Model D manuals page; unit is a Model D/RowErg per report (inventory code is a serial)."
+  },
+  {
+    "item": 3,
+    "manualUrl": "https://www.concept2.com/support/skierg/skierg/manuals-and-schematics",
+    "verified": "Page live; lists SkiErg Product Manual (serial 080514+), warranty, assembly and schematics."
+  },
+  {
+    "item": 4,
+    "manualUrl": "https://kb.cybexintl.com/Owners_Manuals/Arc/5771-4_Owner%27s_Manual_772A_771A.pdf",
+    "verified": "HTTP 200 application/pdf (12.6 MB); Arc Trainer Owner's Manual Part No. 5771-4 covering 771A/771AT and 772A/772AT (apostrophe percent-encoded)."
+  },
+  {
+    "item": 5,
+    "manualUrl": "https://support.lifefitness.com/hc/en-us/articles/4413306636951",
+    "verified": "LF article 'Hammer Strength Body Weight Series Owner's Manual' (1003083-0001 REV AB); models list includes BW-BE."
+  },
+  {
+    "item": 6,
+    "manualUrl": "https://support.lifefitness.com/hc/en-us/articles/31294951801751",
+    "verified": "LF article 'Hammer Strength Free Weight Series Owner's Manual' (1003085-0001 REV AF); models list includes FW-D2 two-tier dumbbell rack."
+  },
+  {
+    "item": 7,
+    "manualUrl": "https://support.lifefitness.com/hc/en-us/articles/31294951801751",
+    "verified": "Same LF Free Weight Series Owner's Manual article; FW-MAB Multi-Angle Bench explicitly listed."
+  },
+  {
+    "item": 8,
+    "manualUrl": "https://support.lifefitness.com/hc/en-us/articles/31294951801751",
+    "verified": "Same LF Free Weight Series Owner's Manual article; FW-FB explicitly listed."
+  },
+  {
+    "item": 10,
+    "manualUrl": "https://kb.cybexintl.com/Owners_Manuals/Strength/OM_Hammer_Strength_Ground_Base_1000421-0001.pdf",
+    "verified": "HTTP 200 application/pdf (9.6 MB); Ground Base Series Owner's Manual 1000421-0001."
+  },
+  {
+    "item": 13,
+    "manualUrl": "https://support.lifefitness.com/hc/en-us/articles/30288253394327",
+    "verified": "LF article 'Hammer Strength Hammer Select Owner's Manual' (9510901 Rev BC); HS-SC Standing Calf explicitly listed."
+  },
+  {
+    "item": 14,
+    "manualUrl": "https://support.lifefitness.com/hc/en-us/articles/360036926694-Hammer-Strength-Plate-Loaded-Owner-s-Manual",
+    "verified": "Old kb.cybexintl.com Plate Loaded PDF now 404s; official LF article (1000420-0001 REV AJ) lists PL-LE."
+  },
+  {
+    "item": 15,
+    "manualUrl": "https://fitnesssuperstore.info/pdfs/Hammer%20Strength%20Linear%20Leg%20Press%20Owners%20Manual.pdf",
+    "verified": "HTTP 200 application/pdf (290 KB); Linear Leg Press Owner's Manual (existing URL still resolves)."
+  },
+  {
+    "item": 16,
+    "manualUrl": "https://kb.cybexintl.com/Owners_Manuals/Strength/OM_HS_HSSMV_Hammer_Strength_Smith_Machine_Vertical_1013955-0001.pdf",
+    "verified": "HTTP 200 application/pdf (10.8 MB); HSSMV Vertical Smith Machine Owner's Manual 1013955-0001 (existing URL still resolves)."
+  },
+  {
+    "item": 17,
+    "manualUrl": "https://fitnesssuperstore.info/pdfs/Hammer%20Strength%20ISO-Lateral%20Leg%20Extension%20ILLE%20Owners%20Manual.pdf",
+    "verified": "PDF text-extracted: full Iso-Lateral Owner's Manual 1000419-0001 REV AA (33 pp) covering IL-BPH/IL-BPV bench press; no LF-hosted article exists for this manual."
+  },
+  {
+    "item": 18,
+    "manualUrl": "https://fitnesssuperstore.info/pdfs/Hammer%20Strength%20ISO-Lateral%20Leg%20Extension%20ILLE%20Owners%20Manual.pdf",
+    "verified": "Same verified Iso-Lateral Owner's Manual 1000419-0001; covers IL-DCP Decline Press."
+  },
+  {
+    "item": 19,
+    "manualUrl": "https://fitnesssuperstore.info/pdfs/Hammer%20Strength%20ISO-Lateral%20Leg%20Extension%20ILLE%20Owners%20Manual.pdf",
+    "verified": "Same verified Iso-Lateral Owner's Manual 1000419-0001; covers IL-WPD Front Lat Pulldown."
+  },
+  {
+    "item": 20,
+    "manualUrl": "https://fitnesssuperstore.info/pdfs/Hammer%20Strength%20ISO-Lateral%20Leg%20Extension%20ILLE%20Owners%20Manual.pdf",
+    "verified": "Same verified Iso-Lateral Owner's Manual 1000419-0001; covers IL-KLC Kneeling Leg Curl."
+  },
+  {
+    "item": 21,
+    "manualUrl": "https://fitnesssuperstore.info/pdfs/Hammer%20Strength%20ISO-Lateral%20Leg%20Extension%20ILLE%20Owners%20Manual.pdf",
+    "verified": "Same verified Iso-Lateral Owner's Manual 1000419-0001; covers IL-LC Leg Curl."
+  },
+  {
+    "item": 22,
+    "manualUrl": "https://fitnesssuperstore.info/pdfs/Hammer%20Strength%20ISO-Lateral%20Leg%20Extension%20ILLE%20Owners%20Manual.pdf",
+    "verified": "HTTP 200 application/pdf (7 MB); existing URL still resolves; covers IL-LE Leg Extension."
+  },
+  {
+    "item": 23,
+    "manualUrl": "https://fitnesssuperstore.info/pdfs/Hammer%20Strength%20ISO-Lateral%20Leg%20Extension%20ILLE%20Owners%20Manual.pdf",
+    "verified": "Same verified Iso-Lateral Owner's Manual 1000419-0001; covers IL-HR and IL-ROW row variants."
+  },
+  {
+    "item": 24,
+    "manualUrl": "https://fitnesssuperstore.info/pdfs/Hammer%20Strength%20ISO-Lateral%20Leg%20Extension%20ILLE%20Owners%20Manual.pdf",
+    "verified": "Same verified Iso-Lateral Owner's Manual 1000419-0001; covers IL-ROW."
+  },
+  {
+    "item": 25,
+    "manualUrl": "https://fitnesssuperstore.info/pdfs/Hammer%20Strength%20ISO-Lateral%20Leg%20Extension%20ILLE%20Owners%20Manual.pdf",
+    "verified": "Same verified Iso-Lateral Owner's Manual 1000419-0001; covers IL-IPH/IL-IPV Incline Press."
+  },
+  {
+    "item": 26,
+    "manualUrl": "https://fitnesssuperstore.info/pdfs/Hammer%20Strength%20ISO-Lateral%20Leg%20Extension%20ILLE%20Owners%20Manual.pdf",
+    "verified": "Same verified Iso-Lateral Owner's Manual 1000419-0001; covers IL-SP Shoulder Press."
+  },
+  {
+    "item": 27,
+    "manualUrl": "https://fitnesssuperstore.info/pdfs/Hammer%20Strength%20ISO-Lateral%20Leg%20Extension%20ILLE%20Owners%20Manual.pdf",
+    "verified": "Same verified Iso-Lateral Owner's Manual 1000419-0001; covers IL-WPD/IL-PD pulldowns."
+  },
+  {
+    "item": 28,
+    "manualUrl": "https://www.manualslib.com/manual/94113/Hammer-Strength-Olympic-Gym-Bench-And-Rack-Systems.html",
+    "verified": "ManualsLib page live; Olympic Gym Bench and Rack Systems catalog listing OBWS with specs (catalog, not full owner's manual)."
+  },
+  {
+    "item": 29,
+    "manualUrl": "https://www.manualslib.com/manual/94113/Hammer-Strength-Olympic-Gym-Bench-And-Rack-Systems.html",
+    "verified": "Same verified catalog page; OFB Olympic Flat Bench listed with specs."
+  },
+  {
+    "item": 30,
+    "manualUrl": "https://www.manualslib.com/manual/94113/Hammer-Strength-Olympic-Gym-Bench-And-Rack-Systems.html",
+    "verified": "Same verified catalog page; OIB Olympic Incline Bench listed with specs."
+  },
+  {
+    "item": 31,
+    "manualUrl": "https://support.lifefitness.com/hc/en-us/articles/360036926694-Hammer-Strength-Plate-Loaded-Owner-s-Manual",
+    "verified": "Old kb PDF 404s; LF's own PL-BSQ Belt Squat Introduction article (360058622793) directs to this Plate Loaded Owner's Manual article."
+  },
+  {
+    "item": 32,
+    "manualUrl": "https://support.lifefitness.com/hc/en-us/articles/360036926694-Hammer-Strength-Plate-Loaded-Owner-s-Manual",
+    "verified": "Old kb PDF 404s; official LF Plate Loaded Owner's Manual article (1000420-0001 REV AJ) lists PL-GRIP."
+  },
+  {
+    "item": 33,
+    "manualUrl": "https://support.lifefitness.com/hc/en-us/articles/360036926694-Hammer-Strength-Plate-Loaded-Owner-s-Manual",
+    "verified": "Old kb PDF 404s; official LF Plate Loaded Owner's Manual article lists PL-BI."
+  },
+  {
+    "item": 34,
+    "manualUrl": "https://support.lifefitness.com/hc/en-us/articles/360036926694-Hammer-Strength-Plate-Loaded-Owner-s-Manual",
+    "verified": "Old kb PDF 404s; official LF Plate Loaded Owner's Manual article lists PL-CALF."
+  },
+  {
+    "item": 35,
+    "manualUrl": "https://fitnesssuperstore.info/pdfs/Hammer%20Strength%20Plate-Loaded%20Owners%20Manual.pdf",
+    "verified": "HTTP 200 application/pdf; Plate-Loaded Owner's Manual 1000420-0001 REV AB, text contains LHS/Hack (current LF REV AJ article no longer lists PL-LHS)."
+  },
+  {
+    "item": 36,
+    "manualUrl": "https://support.lifefitness.com/hc/en-us/articles/360036926694-Hammer-Strength-Plate-Loaded-Owner-s-Manual",
+    "verified": "Old kb PDF 404s; official LF Plate Loaded Owner's Manual article lists PL-LR."
+  },
+  {
+    "item": 37,
+    "manualUrl": "https://support.lifefitness.com/hc/en-us/articles/360036926694-Hammer-Strength-Plate-Loaded-Owner-s-Manual",
+    "verified": "Old kb PDF 404s; official LF Plate Loaded Owner's Manual article lists PL-PO."
+  },
+  {
+    "item": 38,
+    "manualUrl": "https://www.manualslib.com/manual/743130/Life-Fitness-Cable-Motion.html",
+    "verified": "ManualsLib page live; Cable Motion/Multi Jungle Owner's Manual (2011 rev B-2) explicitly covers CMACO Adjustable Cable Crossover (current LF Cable Motion article omits CMACO)."
+  },
+  {
+    "item": 39,
+    "manualUrl": "https://support.lifefitness.com/hc/en-us/articles/360040578414",
+    "verified": "LF article 'Life Fitness Cable Motion Owner's Manual' (1011084-0001 REV AC); CMDAP explicitly listed."
+  },
+  {
+    "item": 40,
+    "manualUrl": "https://kb.cybexintl.com/Owners_Manuals/Strength/OM_FXT_Synrgy360_1002154-0001.pdf",
+    "verified": "HTTP 200 application/pdf (35 MB); Synrgy360 Owner's Manual 1002154-0001 (existing URL still resolves)."
+  },
+  {
+    "item": 41,
+    "manualUrl": "https://support.lifefitness.com/hc/en-us/articles/360036925454",
+    "verified": "LF article 'Life Fitness Multi Jungle Owner's Manual' (1006799-0001 REV AB); MJ-CORE explicitly listed."
+  },
+  {
+    "item": 42,
+    "manualUrl": "https://kb.cybexintl.com/Assembly_Manuals/Strength/LBR_OS_1024350-0001.pdf",
+    "verified": "HTTP 200 application/pdf (1.7 MB); LBR-OS assembly instructions 1024350-0001 (existing URL still resolves)."
+  },
+  {
+    "item": 43,
+    "manualUrl": "https://www.manualslib.com/manual/94198/Life-Fitness-Signature-Sadb.html",
+    "verified": "ManualsLib page live; Life Fitness Signature SADB Adjustable Decline Bench Owner's Manual (8 pp, warranty + assembly)."
+  },
+  {
+    "item": 44,
+    "manualUrl": "https://support.lifefitness.com/hc/en-us/articles/360043013933",
+    "verified": "LF article 'Life Fitness Insignia Series Strength Owner's Manual' (9481201 Rev BE); lists both SS-AB and SS-ABD Abdominal."
+  },
+  {
+    "item": 45,
+    "manualUrl": "https://www.manualslib.com/manual/1968226/Matrix-Performance-Upright-Cycle.html",
+    "verified": "ManualsLib page live; single 17-page manual covering Matrix Performance Upright, Recumbent, and Hybrid Cycles (no Matrix/Johnson-hosted PS-series manual found)."
+  },
+  {
+    "item": 46,
+    "manualUrl": "https://content.johnsonfit.com/inc/uploaded_media/834e7bd0da40c3bdbe2ba166f1b730f0/owners_guide/dbdea001554bc98cf85c17840c105fc0.pdf",
+    "verified": "HTTP 200 application/pdf (3.5 MB) on Johnson Health Tech CDN; Treadmill Owner's Manual covering T7xi/T7xe/T5x."
+  },
+  {
+    "item": 47,
+    "manualUrl": "https://www.manualslib.com/manual/1968226/Matrix-Performance-Upright-Cycle.html",
+    "verified": "Same verified ManualsLib manual; covers the Performance Upright Cycle (U-PS)."
+  },
+  {
+    "item": 48,
+    "manualUrl": "https://support.corehandf.com/Brands/Nautilus/Manuals/620-8783C%20-%20Human%20Sport%20Freedom%20Trainer%20HSFT3%20OM.pdf",
+    "verified": "HTTP 200 application/pdf (6.3 MB) on official Core H&F portal; HumanSport Freedom Trainer HSFT3 Owner's Manual 620-8783C."
+  },
+  {
+    "item": 49,
+    "manualUrl": "https://support.corehandf.com/Brands/Nautilus/Manuals/620-8651C.pdf",
+    "verified": "HTTP 200 application/pdf (2.8 MB); linked as 'Glute Drive Owner's Manual 620-8651' from Core's NP-L1131 Glute Drive product docs page (inventory code parses as 9NP-L1131-60BZS)."
+  },
+  {
+    "item": 50,
+    "manualUrl": "https://support.corehandf.com/Brands/StarTrac/Manuals/620-8253A.pdf",
+    "verified": "HTTP 200 application/pdf; Star Trac Human Sport Owner's Manual 620-8253A (Core's official 'Human Sport Owner's Manual' article links it); text-extraction confirms it covers the Lift Pull machine (HSPL)."
+  },
+  {
+    "item": 51,
+    "manualUrl": "https://support.corehandf.com/Brands/StarTrac/Manuals/620-8253A.pdf",
+    "verified": "Same verified Human Sport Owner's Manual 620-8253A; text-extraction confirms it covers the Shoulder Chest machine (HSSC)."
+  },
+  {
+    "item": 53,
+    "manualUrl": "https://support.corehandf.com/Brands/Nautilus/Manuals/620-8458-NP-L1130-HackSquatOM.pdf",
+    "verified": "HTTP 200 application/pdf (970 KB); Nautilus NP-L1130 Hack Squat Owner's Manual 620-8458 (existing URL still resolves)."
+  },
+  {
+    "item": 55,
+    "manualUrl": "https://support.corehandf.com/Brands/Stairmaster/Manuals/620-8762A%20-%2010G%20OM.pdf",
+    "verified": "HTTP 200 application/pdf (7.3 MB); StairMaster 10G Owner's Manual 620-8762 Rev A, linked from Core's official '10G Stairmaster Owner's Manual' support article."
+  },
+  {
+    "item": 58,
+    "manualUrl": "https://support.corehandf.com/Brands/StarTrac/Manuals/620-8048A.pdf",
+    "verified": "HTTP 200 application/pdf (5.0 MB) on official Core H&F portal; byte-identical to the known IP-L8505 Max Rack Owner's Manual 620-8048 Rev A mirror."
+  },
+  {
+    "item": 61,
+    "manualUrl": "https://commercial.torquefitness.com/pages/assembly-manuals",
+    "verified": "Page live (HTTP 200); lists X-CREATE module assembly-manual PDFs (Wall/Center/Bridge Space, 4SRM) to match against the LPD-101 config (existing URL still resolves)."
+  },
+  {
+    "item": 62,
+    "manualUrl": "https://commercial.torquefitness.com/pages/assembly-manuals",
+    "verified": "Same verified Torque commercial assembly-manuals index for matching the UC1-F07 X-CREATE config (existing URL still resolves)."
+  },
+  {
+    "item": 63,
+    "manualUrl": "https://cdn.shopify.com/s/files/1/0508/1114/2315/files/ASSY_INST_XTTM4-PH-102-Rev_F.PDF",
+    "verified": "HTTP 200 application/pdf (4.8 MB); 'XTTM4-PH & XTTM4GT-PH Assembly Instructions' Rev F linked from Torque's official assembly-manuals page — exact match for inventory code XTTM4-PH."
+  },
+  {
+    "item": 64,
+    "manualUrl": "https://truefitness.com/products/pls-1400-pendulum-squat/",
+    "verified": "Page live; official TRUE Palladium PLS-1400 Pendulum Squat product page (existing URL still resolves; Downloads tab currently offers only the sell sheet, no owner's manual)."
+  },
+  {
+    "item": 65,
+    "manualUrl": "https://shop.truefitness.com/wp-content/uploads/sites/2/2024/10/Alpine-Runner-Owners-Manual-Rev-071221.pdf",
+    "verified": "HTTP 200 application/pdf (14.5 MB) on shop.truefitness.com; Alpine Runner (TI1000) Owner's Manual Rev 071221 named in the report."
+  }
+]

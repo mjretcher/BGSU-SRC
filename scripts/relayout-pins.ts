@@ -1,86 +1,120 @@
-// Photo-informed pin layout: machines cluster by category in rows, matching
-// how the SRC actually arranges the floor (free weights together near the
-// balcony overhang, selectorized machines in rows toward the window wall,
-// cardio in tight parallel rows by type, functional studio along its walls).
-// Pins that a user has manually moved (equipment.pin_moved in the audit log)
-// are left exactly where they were put.
+// Footprint-aware, photo-informed pin layout (v2).
+// Rows are spaced by each category's actual plan footprint (GLYPH_SIZE), run
+// at the building's row angle, and follow the real floor arrangement:
+//  - Entry: free weights west (racks vs. the mirror wall, then benches, then
+//    dumbbell racks), selectorized/leg/cable rows east toward the windows.
+//  - Balcony: climbers/rowers nearest the track, then bikes, then ellipticals,
+//    with the treadmill row along the mezzanine rail overlooking the floor.
+//  - Lower II: functional gear along the studio's two 45-degree walls.
+// Pins manually moved by a user (equipment.pin_moved) are never touched.
 // Usage: npx tsx scripts/relayout-pins.ts
 import "dotenv/config";
 import { db } from "../src/lib/db";
-import type { IconCategory, BuildingLevel } from "../src/generated/prisma/enums";
+import { GLYPH_SIZE } from "../src/components/map/EquipmentGlyphs";
+import type { IconCategory } from "../src/generated/prisma/enums";
 
-interface Rect { x0: number; x1: number; y0: number; y1: number }
+const W = 3840;
+const H = 1911;
 
-// Normalized against the 3840x1911 floor-plan image space (same as mapX/mapY).
-const ENTRY_FREEWEIGHT: Rect = { x0: 0.246, x1: 0.296, y0: 0.524, y1: 0.654 }; // left patch
-const ENTRY_MACHINES: Rect = { x0: 0.319, x1: 0.417, y0: 0.524, y1: 0.672 }; // right patch
-const BALCONY_CARDIO: Rect = { x0: 0.227, x1: 0.389, y0: 0.449, y1: 0.549 };
-const LOWER2_FUNCTIONAL: Rect = { x0: 0.459, x1: 0.512, y0: 0.352, y1: 0.462 };
-const LOWER2_PT: Rect = { x0: 0.466, x1: 0.506, y0: 0.352, y1: 0.396 };
+interface RegionPlan {
+  x0: number; x1: number; y0: number; y1: number; // image px
+  tiltDeg: number;
+  order: IconCategory[][]; // groups laid top→bottom; categories in a group share rows
+}
 
-const FREEWEIGHT: IconCategory[] = ["RACK_SMITH", "BENCH", "DUMBBELL_RACK"];
-
-// Category display order = row order on the floor, per the photos.
-const ENTRY_FREEWEIGHT_ORDER: IconCategory[] = ["RACK_SMITH", "BENCH", "DUMBBELL_RACK"];
-const ENTRY_MACHINE_ORDER: IconCategory[] = [
-  "SELECTORIZED_UPPER", "LEG_MACHINE", "CABLE_PULLEY", "ROWER_SKI",
-  "FUNCTIONAL_TOOL", "STAIR_CLIMBER", "BIKE", "TREADMILL", "SPECIALTY",
-  "ELLIPTICAL", "ARC_TRAINER", "CURVED_TREADMILL", "BENCH", "RACK_SMITH", "DUMBBELL_RACK",
-];
-const CARDIO_ORDER: IconCategory[] = [
-  "TREADMILL", "CURVED_TREADMILL", "ELLIPTICAL", "ARC_TRAINER", "BIKE",
-  "STAIR_CLIMBER", "ROWER_SKI", "SELECTORIZED_UPPER", "LEG_MACHINE",
-  "CABLE_PULLEY", "DUMBBELL_RACK", "BENCH", "RACK_SMITH", "FUNCTIONAL_TOOL", "SPECIALTY",
-];
+const ENTRY_FREE: RegionPlan = {
+  x0: 940, x1: 1215, y0: 960, y1: 1290, tiltDeg: -10,
+  order: [["RACK_SMITH"], ["BENCH"], ["DUMBBELL_RACK"]],
+};
+const ENTRY_MACHINES: RegionPlan = {
+  x0: 1250, x1: 1660, y0: 960, y1: 1310, tiltDeg: -10,
+  order: [
+    ["SELECTORIZED_UPPER"],
+    ["LEG_MACHINE"],
+    ["CABLE_PULLEY", "FUNCTIONAL_TOOL"],
+    ["ROWER_SKI", "STAIR_CLIMBER", "BIKE", "TREADMILL", "ELLIPTICAL", "ARC_TRAINER", "CURVED_TREADMILL", "SPECIALTY", "BENCH", "RACK_SMITH", "DUMBBELL_RACK"],
+  ],
+};
+// Bottom group renders last = closest to the mezzanine rail (photo: treadmills
+// stand at the rail overlooking the weight floor).
+const BALCONY: RegionPlan = {
+  x0: 875, x1: 1495, y0: 858, y1: 1140, tiltDeg: 0,
+  order: [
+    ["STAIR_CLIMBER", "ROWER_SKI", "SPECIALTY", "FUNCTIONAL_TOOL", "SELECTORIZED_UPPER", "LEG_MACHINE", "CABLE_PULLEY", "DUMBBELL_RACK", "BENCH", "RACK_SMITH"],
+    ["BIKE"],
+    ["ELLIPTICAL", "ARC_TRAINER"],
+    ["TREADMILL", "CURVED_TREADMILL"],
+  ],
+};
 
 interface Item { id: string; iconCategory: IconCategory; name: string }
 
-// Category-sorted grid: each category starts a new row; rows share the rect.
-function rowLayout(items: Item[], order: IconCategory[], rect: Rect, cols: number): Map<string, { x: number; y: number }> {
-  const sorted = [...items].sort((a, b) => {
-    const oa = order.indexOf(a.iconCategory);
-    const ob = order.indexOf(b.iconCategory);
-    return (oa === -1 ? 99 : oa) - (ob === -1 ? 99 : ob) || a.name.localeCompare(b.name);
-  });
-  // count total rows: per category, ceil(count/cols)
-  const byCat = new Map<IconCategory, Item[]>();
-  for (const it of sorted) byCat.set(it.iconCategory, [...(byCat.get(it.iconCategory) ?? []), it]);
-  const cats = [...byCat.keys()];
-  const totalRows = cats.reduce((acc, c) => acc + Math.ceil(byCat.get(c)!.length / cols), 0);
-  const w = rect.x1 - rect.x0;
-  const h = rect.y1 - rect.y0;
-  const rowH = h / Math.max(totalRows, 1);
+function layoutRegion(items: Item[], plan: RegionPlan): Map<string, { x: number; y: number }> {
+  const width = plan.x1 - plan.x0;
+  const cx = (plan.x0 + plan.x1) / 2;
+  const tan = Math.tan((plan.tiltDeg * Math.PI) / 180);
 
-  const out = new Map<string, { x: number; y: number }>();
-  let row = 0;
-  for (const c of cats) {
-    const members = byCat.get(c)!;
-    for (let i = 0; i < members.length; i++) {
-      const col = i % cols;
-      if (i > 0 && col === 0) row++;
-      const rowCount = Math.min(cols, members.length - Math.floor(i / cols) * cols);
-      // center the (possibly short) row horizontally
-      const x = rect.x0 + ((col + 0.5) / cols) * w + ((cols - rowCount) / (2 * cols)) * w;
-      const y = rect.y0 + (row + 0.5) * rowH;
-      out.set(members[i].id, { x, y });
+  // build rows: each row = { y-advance, [{item, x}] }
+  interface Row { h: number; xs: { item: Item; x: number }[] }
+  const rows: Row[] = [];
+  for (const group of plan.order) {
+    const members = items
+      .filter((it) => group.includes(it.iconCategory))
+      .sort((a, b) => group.indexOf(a.iconCategory) - group.indexOf(b.iconCategory) || a.name.localeCompare(b.name));
+    if (!members.length) continue;
+    // rows within the group are spaced by the tallest footprint in the group
+    const maxH = Math.max(...members.map((m) => GLYPH_SIZE[m.iconCategory].h));
+    const rowSp = maxH * 1.15;
+    let i = 0;
+    while (i < members.length) {
+      // fill one row greedily by each member's own width
+      const rowItems: { item: Item; x: number }[] = [];
+      let used = 0;
+      while (i < members.length) {
+        const gw = GLYPH_SIZE[members[i].iconCategory].w * 1.38;
+        if (used + gw > width && rowItems.length > 0) break;
+        rowItems.push({ item: members[i], x: used + gw / 2 });
+        used += gw;
+        i++;
+      }
+      // center the row
+      for (const r of rowItems) r.x = plan.x0 + r.x + (width - used) / 2;
+      rows.push({ h: rowSp, xs: rowItems });
     }
-    row++;
+  }
+
+  // vertical fit: scale row heights into the region if they overflow
+  const total = rows.reduce((a, r) => a + r.h, 0);
+  const fit = Math.min(1, (plan.y1 - plan.y0) / Math.max(total, 1));
+  const out = new Map<string, { x: number; y: number }>();
+  let y = plan.y0;
+  for (const row of rows) {
+    const rowY = y + (row.h * fit) / 2;
+    for (const { item, x } of row.xs) {
+      out.set(item.id, { x: x / W, y: (rowY + tan * (x - cx)) / H });
+    }
+    y += row.h * fit;
   }
   return out;
 }
 
-// Along-the-walls layout for the functional studio (photo: gear lines both walls).
-function wallLayout(items: Item[], rect: Rect): Map<string, { x: number; y: number }> {
+// Functional studio: gear along the two 45° walls (photo: racks line both sides).
+function studioWalls(items: Item[]): Map<string, { x: number; y: number }> {
   const out = new Map<string, { x: number; y: number }>();
+  const nw = { x0: 1790, y0: 762, x1: 1886, y1: 668 }; // inner NW wall line
+  const se = { x0: 1806, y0: 874, x1: 1914, y1: 768 }; // inner SE wall line
   const half = Math.ceil(items.length / 2);
-  const top = items.slice(0, half);
-  const bottom = items.slice(half);
-  top.forEach((it, i) => {
-    out.set(it.id, { x: rect.x0 + ((i + 0.5) / Math.max(top.length, 1)) * (rect.x1 - rect.x0), y: rect.y0 + 0.012 });
-  });
-  bottom.forEach((it, i) => {
-    out.set(it.id, { x: rect.x0 + ((i + 0.5) / Math.max(bottom.length, 1)) * (rect.x1 - rect.x0), y: rect.y1 - 0.012 });
-  });
+  const place = (line: typeof nw, list: Item[]) => {
+    list.forEach((it, i) => {
+      const t = (i + 0.5) / Math.max(list.length, 1);
+      out.set(it.id, {
+        x: (line.x0 + t * (line.x1 - line.x0)) / W,
+        y: (line.y0 + t * (line.y1 - line.y0)) / H,
+      });
+    });
+  };
+  place(nw, items.slice(0, half));
+  place(se, items.slice(half));
   return out;
 }
 
@@ -92,37 +126,27 @@ async function main() {
       select: { targetId: true },
     }),
   ]);
-  const manuallyMoved = new Set(movedLogs.map((l) => l.targetId).filter(Boolean));
+  const manuallyMoved = process.env.ALL === "1" ? new Set<string>() : new Set(movedLogs.map((l) => l.targetId).filter(Boolean));
+  const FREE: IconCategory[] = ["RACK_SMITH", "BENCH", "DUMBBELL_RACK"];
 
   const positions = new Map<string, { x: number; y: number }>();
-
   const entry = equipment.filter((e) => e.level === "ENTRY");
-  const entryFree = entry.filter((e) => FREEWEIGHT.includes(e.iconCategory));
-  const entryMachines = entry.filter((e) => !FREEWEIGHT.includes(e.iconCategory));
-  for (const [k, v] of rowLayout(entryFree, ENTRY_FREEWEIGHT_ORDER, ENTRY_FREEWEIGHT, 7)) positions.set(k, v);
-  for (const [k, v] of rowLayout(entryMachines, ENTRY_MACHINE_ORDER, ENTRY_MACHINES, 10)) positions.set(k, v);
-
-  const balcony = equipment.filter((e) => e.level === "BALCONY");
-  for (const [k, v] of rowLayout(balcony, CARDIO_ORDER, BALCONY_CARDIO, 14)) positions.set(k, v);
+  for (const [k, v] of layoutRegion(entry.filter((e) => FREE.includes(e.iconCategory)), ENTRY_FREE)) positions.set(k, v);
+  for (const [k, v] of layoutRegion(entry.filter((e) => !FREE.includes(e.iconCategory)), ENTRY_MACHINES)) positions.set(k, v);
+  for (const [k, v] of layoutRegion(equipment.filter((e) => e.level === "BALCONY"), BALCONY)) positions.set(k, v);
 
   const lower = equipment.filter((e) => e.level === "LOWER_2");
   const functional = lower.filter((e) => e.zone === "Functional Training Room");
   const pt = lower.filter((e) => e.zone !== "Functional Training Room");
-  for (const [k, v] of wallLayout(functional, LOWER2_FUNCTIONAL)) positions.set(k, v);
+  for (const [k, v] of studioWalls(functional)) positions.set(k, v);
   pt.forEach((e, i) => {
-    positions.set(e.id, {
-      x: LOWER2_PT.x0 + ((i + 0.5) / Math.max(pt.length, 1)) * (LOWER2_PT.x1 - LOWER2_PT.x0),
-      y: (LOWER2_PT.y0 + LOWER2_PT.y1) / 2,
-    });
+    positions.set(e.id, { x: (1906 + i * 34) / W, y: (700 + i * 26) / H });
   });
 
   let updated = 0;
   let skipped = 0;
   for (const e of equipment) {
-    if (manuallyMoved.has(e.id)) {
-      skipped++;
-      continue;
-    }
+    if (manuallyMoved.has(e.id)) { skipped++; continue; }
     const p = positions.get(e.id);
     if (!p) continue;
     await db.equipment.update({ where: { id: e.id }, data: { mapX: p.x, mapY: p.y } });
@@ -133,10 +157,10 @@ async function main() {
       actorEmail: "system",
       action: "equipment.bulk_relayout",
       targetType: "Equipment",
-      after: { updated, skippedManuallyMoved: skipped, basis: "photo-informed category rows" },
+      after: { updated, skippedManuallyMoved: skipped, basis: "footprint-aware v2, photo row order" },
     },
   });
-  console.log(`Repositioned ${updated} pins; left ${skipped} manually-placed pins untouched.`);
+  console.log(`Repositioned ${updated}; preserved ${skipped} manually-placed pins.`);
 }
 
 main().then(() => process.exit(0));

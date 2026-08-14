@@ -3,9 +3,10 @@
 import { useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import type { BuildingLevel, EquipmentStatus, IconCategory } from "@/generated/prisma/enums";
-import { projectPin, unprojectPin, CROP, type LevelKey } from "@/data/floorplans";
+import { projectPin, unprojectPin, CROP, FLOORPLAN_W, FLOORPLAN_H, type LevelKey } from "@/data/floorplans";
 import { LevelSvg } from "./LevelSvg";
-import { CATEGORY_ICON, LayersIcon } from "../icons";
+import { LayersIcon } from "../icons";
+import { GlyphShape, GLYPH_SIZE } from "./EquipmentGlyphs";
 import { STATUS_SHORT, STATUS_TONE, TONE_COLOR, TONE_GLOW, type StatusTone } from "@/lib/status";
 
 export interface MapEquipment {
@@ -23,6 +24,10 @@ export interface MapEquipment {
 
 // When a level is focused, zoom the floor into its equipment zone; pins are
 // counter-scaled so they keep constant screen size and gain breathing room.
+// Equipment rows follow the building's grid: slight tilt on the entry fan,
+// straight on the cardio deck, 45deg in the diamond functional studio.
+const GLYPH_ANGLE: Record<LevelKey, number> = { entry: -10, balcony: 0, lower2: -45 };
+
 const ZONE_FOCUS: Record<LevelKey, { s: number; dx: number; dy: number }> = {
   entry: { s: 2.2, dx: -7, dy: -51.9 },
   balcony: { s: 2.2, dx: 2, dy: -17.8 },
@@ -71,7 +76,7 @@ export function FacilityMap({
     return dragOverride[e.id] ?? { x: e.mapX, y: e.mapY };
   }
 
-  function startDrag(ev: React.PointerEvent<HTMLDivElement>, e: MapEquipment) {
+  function startDrag(ev: React.PointerEvent<Element>, e: MapEquipment) {
     if (!arrange) return;
     ev.preventDefault();
     ev.stopPropagation();
@@ -231,96 +236,83 @@ export function FacilityMap({
                     style={{ background: "radial-gradient(ellipse, rgba(0,0,0,0.5), transparent 70%)" }}
                   />
                 )}
-                <LevelSvg level={l.key} />
+                <LevelSvg level={l.key} showCaptions={isFocus} />
 
-                {/* Pins */}
-                {list.map((e) => {
-                  const p = pinPos(e);
-                  const tone = STATUS_TONE[e.status];
-                  const Icon = CATEGORY_ICON[e.iconCategory];
-                  const active = selectedId === e.id || hovered === e.id;
-                  const proj = projectPin(p.x, p.y);
-                  if (inStack) {
+                {/* Equipment footprints: plan symbols drawn in the floor's space */}
+                <svg
+                  viewBox={`${CROP.x} ${CROP.y} ${CROP.w} ${CROP.h}`}
+                  className="absolute inset-0 h-full w-full"
+                  style={{ overflow: "visible" }}
+                >
+                  {list.map((e) => {
+                    const pp = pinPos(e);
+                    const tone = STATUS_TONE[e.status];
+                    const active = selectedId === e.id || hovered === e.id;
                     const attention = tone === "down" || tone === "warn";
+                    const gs = GLYPH_SIZE[e.iconCategory];
+                    const ringR = Math.max(gs.w, gs.h) / 2 + 9;
                     return (
-                      <span
+                      <g
                         key={e.id}
-                        className="absolute rounded-full"
+                        transform={`translate(${pp.x * FLOORPLAN_W} ${pp.y * FLOORPLAN_H}) rotate(${GLYPH_ANGLE[l.key]})`}
                         style={{
-                          left: `${proj.left}%`,
-                          top: `${proj.top}%`,
-                          width: attention ? 10 : 5,
-                          height: attention ? 10 : 5,
-                          marginLeft: attention ? -5 : -2.5,
-                          marginTop: attention ? -5 : -2.5,
-                          background: TONE_COLOR[tone],
-                          boxShadow: attention ? `0 0 14px 3px ${TONE_GLOW[tone]}` : `0 0 4px ${TONE_GLOW[tone]}`,
-                          animation: attention ? "pulse-pin 2s ease-in-out infinite" : undefined,
+                          color: TONE_COLOR[tone],
+                          cursor: inStack ? undefined : arrange ? "grab" : "pointer",
+                          pointerEvents: inStack ? "none" : "auto",
                         }}
-                      />
-                    );
-                  }
-                  return (
-                    <div
-                      key={e.id}
-                      className="absolute"
-                      style={{
-                        left: `${proj.left}%`,
-                        top: `${proj.top}%`,
-                        zIndex: active ? 40 : 30,
-                        transform: `translate(-50%, -50%) scale(${isFocus ? 1 / ZONE_FOCUS[l.key].s : 1})`,
-                        transition: "transform 0.65s cubic-bezier(0.32, 0.72, 0, 1)",
-                      }}
-                      onPointerDown={(ev) => startDrag(ev, e)}
-                      onMouseEnter={() => setHovered(e.id)}
-                      onMouseLeave={() => setHovered((h) => (h === e.id ? null : h))}
-                    >
-                      <motion.button
+                        onPointerDown={(ev) => startDrag(ev, e)}
                         onClick={(ev) => {
                           ev.stopPropagation();
                           if (!arrange) onSelect(e.id);
                         }}
-                        animate={{ scale: active ? 1.25 : 1 }}
-                        transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                        className={`flex h-[26px] w-[26px] items-center justify-center rounded-[8px] border backdrop-blur-sm ${
-                          arrange ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
-                        }`}
+                        onMouseEnter={() => setHovered(e.id)}
+                        onMouseLeave={() => setHovered((h) => (h === e.id ? null : h))}
+                      >
+                        {attention && (
+                          <circle
+                            r={ringR + 6}
+                            fill={TONE_GLOW[tone]}
+                            style={{ animation: "pulse-pin 2s ease-in-out infinite" }}
+                          />
+                        )}
+                        {active && !inStack && (
+                          <circle r={ringR} fill="none" stroke="var(--accent)" strokeWidth={2.5} opacity={0.9} />
+                        )}
+                        <GlyphShape category={e.iconCategory} />
+                      </g>
+                    );
+                  })}
+                </svg>
+
+                {/* Hover card */}
+                {!inStack &&
+                  hovered &&
+                  !arrange &&
+                  (() => {
+                    const he = list.find((x) => x.id === hovered);
+                    if (!he) return null;
+                    const hp = pinPos(he);
+                    const proj = projectPin(hp.x, hp.y);
+                    const htone = STATUS_TONE[he.status];
+                    return (
+                      <div
+                        className="pointer-events-none absolute z-50 whitespace-nowrap rounded-lg border border-line bg-bg-raised/95 px-3 py-2 shadow-2xl backdrop-blur"
                         style={{
-                          background: "rgba(24,19,16,0.88)",
-                          borderColor: TONE_COLOR[tone],
-                          color: TONE_COLOR[tone],
-                          boxShadow: `0 0 ${active ? 18 : 10}px ${TONE_GLOW[tone]}${
-                            e.flagged ? ", 0 0 0 2px rgba(248,113,113,0.35)" : ""
-                          }`,
+                          left: `${proj.left}%`,
+                          top: `${proj.top}%`,
+                          transform: `translate(-50%, -140%) scale(${1 / ZONE_FOCUS[l.key].s})`,
+                          transformOrigin: "bottom center",
                         }}
                       >
-                        <Icon className="h-[15px] w-[15px]" />
-                      </motion.button>
-                      <AnimatePresence>
-                        {hovered === e.id && !arrange && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 6, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 4, scale: 0.97 }}
-                            transition={{ duration: 0.15 }}
-                            className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-line bg-bg-raised/95 px-3 py-2 shadow-2xl backdrop-blur"
-                          >
-                            <p className="text-[13px] font-medium leading-tight text-ink">{e.name}</p>
-                            <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-ink-secondary">
-                              <span
-                                className="inline-block h-1.5 w-1.5 rounded-full"
-                                style={{ background: TONE_COLOR[tone] }}
-                              />
-                              {STATUS_SHORT[e.status]}
-                              <span className="text-[color:var(--text-faint)]">· #{e.itemId}</span>
-                            </p>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  );
-                })}
-
+                        <p className="text-[13px] font-medium leading-tight text-ink">{he.name}</p>
+                        <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-ink-secondary">
+                          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: TONE_COLOR[htone] }} />
+                          {STATUS_SHORT[he.status]}
+                          <span className="text-[color:var(--text-faint)]">· #{he.itemId}</span>
+                        </p>
+                      </div>
+                    );
+                  })()}
               </motion.div>
             </motion.div>
           );

@@ -17,7 +17,22 @@ const ZONE_STYLE: Partial<Record<ZoneClass, { fill: string; stroke: string; stro
   restroom: { fill: "rgba(214,186,155,0.05)", stroke: "rgba(214,186,155,0.16)" },
 };
 
-export function LevelSvg({ level, id }: { level: LevelKey; id?: string }) {
+// Zone captions shown when a level is focused, like the plan mock-ups.
+const CAPTIONS: Record<LevelKey, { x: number; y: number; text: string }[]> = {
+  entry: [
+    { x: 1075, y: 940, text: "FREE WEIGHTS" },
+    { x: 1455, y: 940, text: "STRENGTH" },
+  ],
+  balcony: [
+    { x: 1185, y: 832, text: "CARDIO DECK" },
+    { x: 1900, y: 690, text: "TRACK" },
+  ],
+  lower2: [
+    { x: 1866, y: 636, text: "FUNCTIONAL TRAINING" },
+  ],
+};
+
+export function LevelSvg({ level, id, showCaptions }: { level: LevelKey; id?: string; showCaptions?: boolean }) {
   const plan = FLOORPLANS[level];
   return (
     <svg
@@ -55,6 +70,21 @@ export function LevelSvg({ level, id }: { level: LevelKey; id?: string }) {
         fill={`url(#floor-dots-${level})`}
         clipPath={`url(#sil-clip-${level})`}
       />
+      {showCaptions &&
+        CAPTIONS[level].map((c) => (
+          <text
+            key={c.text}
+            x={c.x}
+            y={c.y}
+            textAnchor="middle"
+            fill="rgba(226,200,170,0.5)"
+            fontSize={30}
+            letterSpacing={7}
+            fontFamily="var(--font-geist-mono), monospace"
+          >
+            {c.text}
+          </text>
+        ))}
       {(Object.keys(ZONE_STYLE) as ZoneClass[]).map((cls) =>
         (plan[cls] ?? []).map((pts, i) => {
           const s = ZONE_STYLE[cls]!;
