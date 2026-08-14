@@ -5,21 +5,21 @@ import type { IconCategory } from "@/generated/prisma/enums";
 // scales and rotates with the drawing. `w`/`h` are the footprint extents used
 // by the layout script for spacing.
 export const GLYPH_SIZE: Record<IconCategory, { w: number; h: number }> = {
-  TREADMILL: { w: 22, h: 52 },
-  CURVED_TREADMILL: { w: 26, h: 52 },
-  ELLIPTICAL: { w: 20, h: 48 },
-  ARC_TRAINER: { w: 24, h: 50 },
-  BIKE: { w: 16, h: 34 },
-  ROWER_SKI: { w: 14, h: 58 },
-  STAIR_CLIMBER: { w: 24, h: 34 },
-  BENCH: { w: 16, h: 40 },
-  RACK_SMITH: { w: 40, h: 40 },
-  LEG_MACHINE: { w: 26, h: 34 },
-  CABLE_PULLEY: { w: 44, h: 20 },
-  SELECTORIZED_UPPER: { w: 26, h: 30 },
-  DUMBBELL_RACK: { w: 52, h: 16 },
-  FUNCTIONAL_TOOL: { w: 24, h: 24 },
-  SPECIALTY: { w: 22, h: 22 },
+  TREADMILL: { w: 14, h: 30 },
+  CURVED_TREADMILL: { w: 16, h: 30 },
+  ELLIPTICAL: { w: 12, h: 29 },
+  ARC_TRAINER: { w: 14, h: 29 },
+  BIKE: { w: 9, h: 19 },
+  ROWER_SKI: { w: 9, h: 35 },
+  STAIR_CLIMBER: { w: 13, h: 22 },
+  BENCH: { w: 9, h: 22 },
+  RACK_SMITH: { w: 26, h: 26 },
+  LEG_MACHINE: { w: 16, h: 22 },
+  CABLE_PULLEY: { w: 46, h: 13 },
+  SELECTORIZED_UPPER: { w: 16, h: 19 },
+  DUMBBELL_RACK: { w: 35, h: 10 },
+  FUNCTIONAL_TOOL: { w: 15, h: 15 },
+  SPECIALTY: { w: 13, h: 13 },
 };
 
 const DETAIL = "rgba(226,200,170,0.55)";

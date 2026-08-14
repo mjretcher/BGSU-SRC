@@ -38,7 +38,7 @@ const ENTRY_MACHINES: RegionPlan = {
 // Bottom group renders last = closest to the mezzanine rail (photo: treadmills
 // stand at the rail overlooking the weight floor).
 const BALCONY: RegionPlan = {
-  x0: 875, x1: 1495, y0: 858, y1: 1140, tiltDeg: 0,
+  x0: 880, x1: 1490, y0: 862, y1: 1044, tiltDeg: 0,
   order: [
     ["STAIR_CLIMBER", "ROWER_SKI", "SPECIALTY", "FUNCTIONAL_TOOL", "SELECTORIZED_UPPER", "LEG_MACHINE", "CABLE_PULLEY", "DUMBBELL_RACK", "BENCH", "RACK_SMITH"],
     ["BIKE"],

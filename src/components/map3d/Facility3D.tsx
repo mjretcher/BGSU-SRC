@@ -14,13 +14,13 @@ import type { MapEquipment } from "../map/FacilityMap";
 import type { BuildingLevel } from "@/generated/prisma/enums";
 
 // plan px → meters (building ≈ 140 m across the traced crop)
-const S = 0.0637;
+const S = 0.07598; // calibrated: 1/8-mile track lap = 201 m
 const CX = 1202; // crop center in plan px
 const CY = 856;
 
 const LEVEL_OF: Record<BuildingLevel, LevelKey> = { ENTRY: "entry", BALCONY: "balcony", LOWER_2: "lower2" };
 const LEVEL_Y: Record<LevelKey, number> = { lower2: 0, entry: 4.6, balcony: 9.2 };
-const YAW: Record<LevelKey, number> = { entry: (-10 * Math.PI) / 180, balcony: 0, lower2: (-45 * Math.PI) / 180 };
+const YAW: Record<LevelKey, number> = { entry: (-10 * Math.PI) / 180, balcony: Math.PI, lower2: (-45 * Math.PI) / 180 };
 
 const TONE_3D: Record<string, string> = {
   up: "#34d399",
@@ -175,8 +175,8 @@ function FloorPlate({ level, faded }: { level: LevelKey; faded: boolean }) {
 // Mezzanine rail along the cardio deck edge (posts + top rail), like the photos.
 function Rail({ faded }: { faded: boolean }) {
   const y = LEVEL_Y.balcony;
-  const [x0] = toWorld(875 / FLOORPLAN_W, 1148 / FLOORPLAN_H);
-  const [x1, z] = toWorld(1495 / FLOORPLAN_W, 1148 / FLOORPLAN_H);
+  const [x0] = toWorld(875 / FLOORPLAN_W, 1052 / FLOORPLAN_H);
+  const [x1, z] = toWorld(1495 / FLOORPLAN_W, 1052 / FLOORPLAN_H);
   const posts = [];
   for (let x = x0; x <= x1; x += 1.8) posts.push(x);
   const opacity = faded ? 0.1 : 1;
@@ -545,7 +545,7 @@ export function Facility3D({
         minPolarAngle={0.25}
         maxPolarAngle={1.25}
         minDistance={12}
-        maxDistance={210}
+        maxDistance={240}
       />
       <CameraRig focus={focus} controls={controls} />
       <Diag />
