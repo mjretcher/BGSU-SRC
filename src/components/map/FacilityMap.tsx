@@ -21,6 +21,14 @@ export interface MapEquipment {
   flagged: boolean;
 }
 
+// When a level is focused, zoom the floor into its equipment zone; pins are
+// counter-scaled so they keep constant screen size and gain breathing room.
+const ZONE_FOCUS: Record<LevelKey, { s: number; dx: number; dy: number }> = {
+  entry: { s: 2.2, dx: -7, dy: -51.9 },
+  balcony: { s: 2.2, dx: 2, dy: -17.8 },
+  lower2: { s: 2.4, dx: -71.5, dy: 15.4 },
+};
+
 const LEVELS: { key: LevelKey; db: BuildingLevel; label: string; sub: string }[] = [
   { key: "balcony", db: "BALCONY", label: "Balcony", sub: "Cardio Deck" },
   { key: "entry", db: "ENTRY", label: "Entry Level", sub: "Weight Floor" },
@@ -204,10 +212,17 @@ export function FacilityMap({
               }
               transition={{ type: "tween", duration: 0.65, ease: [0.32, 0.72, 0, 1] }}
             >
-              <div
+              <motion.div
                 data-level-plane={l.key}
                 className={`relative h-full w-full ${inStack ? "cursor-pointer" : ""}`}
                 onClick={inStack ? () => setFocus(l.key) : undefined}
+                initial={false}
+                animate={
+                  isFocus
+                    ? { scale: ZONE_FOCUS[l.key].s, x: `${ZONE_FOCUS[l.key].dx}%`, y: `${ZONE_FOCUS[l.key].dy}%` }
+                    : { scale: 1, x: "0%", y: "0%" }
+                }
+                transition={{ type: "tween", duration: 0.65, ease: [0.32, 0.72, 0, 1] }}
               >
                 {/* depth shadow under plate in stack view */}
                 {inStack && (
@@ -253,7 +268,8 @@ export function FacilityMap({
                         left: `${proj.left}%`,
                         top: `${proj.top}%`,
                         zIndex: active ? 40 : 30,
-                        transform: "translate(-50%, -50%)",
+                        transform: `translate(-50%, -50%) scale(${isFocus ? 1 / ZONE_FOCUS[l.key].s : 1})`,
+                        transition: "transform 0.65s cubic-bezier(0.32, 0.72, 0, 1)",
                       }}
                       onPointerDown={(ev) => startDrag(ev, e)}
                       onMouseEnter={() => setHovered(e.id)}
@@ -305,7 +321,7 @@ export function FacilityMap({
                   );
                 })}
 
-              </div>
+              </motion.div>
             </motion.div>
           );
         })}

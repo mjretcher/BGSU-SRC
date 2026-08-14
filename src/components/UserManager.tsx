@@ -27,6 +27,10 @@ export function UserManager({ selfId, initialUsers }: { selfId: string; initialU
 
   const [newEmail, setNewEmail] = useState("");
   const [newName, setNewName] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+
+  const [resetFor, setResetFor] = useState<string | null>(null);
+  const [resetValue, setResetValue] = useState("");
 
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -57,24 +61,32 @@ export function UserManager({ selfId, initialUsers }: { selfId: string; initialU
   async function addUser() {
     const data = await call("/api/users", {
       method: "POST",
-      body: JSON.stringify({ email: newEmail, name: newName }),
+      body: JSON.stringify({ email: newEmail, name: newName, password: newPassword || undefined }),
     });
     if (data) {
       setNewEmail("");
       setNewName("");
+      setNewPassword("");
       if (data.generatedPassword) {
         setReveal({ email: (data.user as U).email, password: data.generatedPassword as string });
       }
     }
   }
 
-  async function resetPassword(u: U) {
-    if (!confirm(`Reset the password for ${u.email}? The old password stops working immediately.`)) return;
+  async function submitReset(u: U, custom: string) {
     const data = await call(`/api/users/${u.id}`, {
       method: "PATCH",
-      body: JSON.stringify({ resetPassword: true }),
+      body: JSON.stringify(custom ? { password: custom } : { resetPassword: true }),
     });
-    if (data?.generatedPassword) setReveal({ email: u.email, password: data.generatedPassword as string });
+    if (data) {
+      setResetFor(null);
+      setResetValue("");
+      if (data.generatedPassword) {
+        setReveal({ email: u.email, password: data.generatedPassword as string });
+      } else if (custom) {
+        setReveal({ email: u.email, password: custom });
+      }
+    }
   }
 
   async function saveEdit(u: U) {
@@ -140,7 +152,14 @@ export function UserManager({ selfId, initialUsers }: { selfId: string; initialU
                   >
                     Edit
                   </button>
-                  <button className={btnGhost} disabled={busy} onClick={() => resetPassword(u)}>
+                  <button
+                    className={btnGhost}
+                    disabled={busy}
+                    onClick={() => {
+                      setResetFor(resetFor === u.id ? null : u.id);
+                      setResetValue("");
+                    }}
+                  >
                     Reset password
                   </button>
                   {u.id !== selfId && (
@@ -149,6 +168,31 @@ export function UserManager({ selfId, initialUsers }: { selfId: string; initialU
                     </button>
                   )}
                 </div>
+              </div>
+            )}
+            {resetFor === u.id && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+                <input
+                  className={inputCls + " max-w-[240px]"}
+                  type="text"
+                  placeholder="Type a new password…"
+                  value={resetValue}
+                  onChange={(e) => setResetValue(e.target.value)}
+                />
+                <button
+                  className={btnPrimary}
+                  disabled={busy || resetValue.trim().length < 8}
+                  onClick={() => submitReset(u, resetValue.trim())}
+                >
+                  Set this password
+                </button>
+                <button className={btnGhost} disabled={busy} onClick={() => submitReset(u, "")}>
+                  Generate random instead
+                </button>
+                <button className={btnGhost} onClick={() => setResetFor(null)}>Cancel</button>
+                {resetValue.trim().length > 0 && resetValue.trim().length < 8 && (
+                  <span className="text-[12px] text-warn">At least 8 characters</span>
+                )}
               </div>
             )}
           </div>
@@ -160,9 +204,23 @@ export function UserManager({ selfId, initialUsers }: { selfId: string; initialU
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <input className={inputCls + " max-w-[200px]"} value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Full name" />
           <input className={inputCls + " max-w-[260px]"} value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="email@bgsu.edu" type="email" />
-          <button className={btnPrimary} disabled={busy || !newName.trim() || !newEmail.trim()} onClick={addUser}>
-            Create — generate password
+          <input
+            className={inputCls + " max-w-[220px]"}
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="Password (blank = generate)"
+            type="text"
+          />
+          <button
+            className={btnPrimary}
+            disabled={busy || !newName.trim() || !newEmail.trim() || (newPassword.trim().length > 0 && newPassword.trim().length < 8)}
+            onClick={addUser}
+          >
+            Create user
           </button>
+          {newPassword.trim().length > 0 && newPassword.trim().length < 8 && (
+            <span className="text-[12px] text-warn">At least 8 characters</span>
+          )}
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { db } from "@/lib/db";
+import Link from "next/link";
 import { UserManager } from "@/components/UserManager";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,8 @@ export default async function UsersPage() {
       <header className="mb-6">
         <h1 className="text-xl font-semibold tracking-tight text-ink">Users</h1>
         <p className="mt-0.5 text-[13px] text-ink-secondary">
-          Everyone has identical permissions. Generated passwords are shown once — pass them on securely.
+          Everyone has identical permissions. Passwords you set or generate are shown once — pass them on securely.
+          {" "}<Link href="/audit" className="text-[color:var(--text-faint)] underline-offset-2 hover:text-accent hover:underline">Audit trail →</Link>
         </p>
       </header>
       <UserManager

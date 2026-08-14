@@ -178,6 +178,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           </div>
           <p className="mt-4 border-t border-line pt-3 text-[12px] text-[color:var(--text-faint)]">
             Full sortable table with every unit → <Link href={`/fleet?period=${period}`} className="text-accent">Fleet view</Link>
+            <span className="mx-2">·</span>
+            Every change ever made → <Link href="/audit" className="text-accent">audit trail</Link>
           </p>
         </section>
       </div>

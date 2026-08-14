@@ -23,6 +23,16 @@ export function LevelSvg({ level, id }: { level: LevelKey; id?: string }) {
       className="h-full w-full"
       preserveAspectRatio="xMidYMid meet"
     >
+      <defs>
+        <pattern id={`floor-dots-${level}`} width="36" height="36" patternUnits="userSpaceOnUse">
+          <circle cx="18" cy="18" r="1.6" fill="rgba(148,163,184,0.10)" />
+        </pattern>
+        <clipPath id={`sil-clip-${level}`}>
+          {plan.silhouette?.map((pts, i) => (
+            <polygon key={i} points={pts.map((p) => p.join(",")).join(" ")} />
+          ))}
+        </clipPath>
+      </defs>
       {plan.silhouette?.map((pts, i) => (
         <polygon
           key={`sil-${i}`}
@@ -33,6 +43,15 @@ export function LevelSvg({ level, id }: { level: LevelKey; id?: string }) {
           strokeLinejoin="round"
         />
       ))}
+      {/* subtle floor texture inside the building footprint */}
+      <rect
+        x={CROP.x}
+        y={CROP.y}
+        width={CROP.w}
+        height={CROP.h}
+        fill={`url(#floor-dots-${level})`}
+        clipPath={`url(#sil-clip-${level})`}
+      />
       {(Object.keys(ZONE_STYLE) as ZoneClass[]).map((cls) =>
         (plan[cls] ?? []).map((pts, i) => {
           const s = ZONE_STYLE[cls]!;
