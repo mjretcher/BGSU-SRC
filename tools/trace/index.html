@@ -1,0 +1,67 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Floor plan trace workspace</title>
+<style>
+  body { margin: 0; background: #0a0e14; font-family: monospace; color: #9aa5b8; }
+  .bar { padding: 8px 12px; display: flex; gap: 16px; align-items: center; }
+  .wrap { position: relative; width: 100%; }
+  .wrap img, .wrap svg { position: absolute; inset: 0; width: 100%; height: auto; display: block; }
+  .wrap { aspect-ratio: 3840 / 1911; }
+  svg polygon, svg path, svg circle { vector-effect: non-scaling-stroke; }
+</style>
+<div class="bar">
+  <label>Level:
+    <select id="level">
+      <option value="entry">entry</option>
+      <option value="balcony">balcony</option>
+      <option value="lower2">lower2</option>
+    </select>
+  </label>
+  <label>JPG opacity: <input id="op" type="range" min="0" max="100" value="60" /></label>
+  <span id="pos">–</span> <span>(click logs px coords to console + list below)</span>
+</div>
+<div class="wrap" id="wrap">
+  <img id="jpg" src="/public/floorplans/src-entry-2025.jpg" />
+  <div id="svghost" style="position:absolute;inset:0"></div>
+</div>
+<pre id="log" style="padding:12px"></pre>
+<script>
+  const svgs = {
+    entry: `/tools/trace/entry.svg`,
+    balcony: `/tools/trace/balcony.svg`,
+    lower2: `/tools/trace/lower2.svg`,
+  };
+  const jpgs = {
+    entry: `/public/floorplans/src-entry-2025.jpg`,
+    balcony: `/public/floorplans/src-balcony-2025.jpg`,
+    lower2: `/public/floorplans/src-lower2-2025.jpg`,
+  };
+  const wrap = document.getElementById("wrap");
+  const jpg = document.getElementById("jpg");
+  const host = document.getElementById("svghost");
+  const op = document.getElementById("op");
+  const level = document.getElementById("level");
+  async function load() {
+    jpg.src = jpgs[level.value];
+    const res = await fetch(svgs[level.value] + "?t=" + Date.now());
+    host.innerHTML = res.ok ? await res.text() : "";
+    const s = host.querySelector("svg");
+    if (s) { s.style.width = "100%"; s.style.height = "auto"; }
+  }
+  op.oninput = () => (jpg.style.opacity = op.value / 100);
+  level.onchange = load;
+  wrap.onclick = (e) => {
+    const r = wrap.getBoundingClientRect();
+    const x = Math.round(((e.clientX - r.left) / r.width) * 3840);
+    const y = Math.round(((e.clientY - r.top) / r.height) * 1911);
+    document.getElementById("log").textContent += `${x},${y}\n`;
+    console.log(x, y);
+  };
+  wrap.onmousemove = (e) => {
+    const r = wrap.getBoundingClientRect();
+    document.getElementById("pos").textContent =
+      Math.round(((e.clientX - r.left) / r.width) * 3840) + "," +
+      Math.round(((e.clientY - r.top) / r.height) * 1911);
+  };
+  load();
+</script>

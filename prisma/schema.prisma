@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────
+
+enum EquipmentStatus {
+  IN_SERVICE
+  DOWN_REPORTED // Down – Reported / Diagnosing
+  DOWN_PARTS_ORDERED // Down – Parts Ordered
+  DOWN_AWAITING_VENDOR // Down – Awaiting Vendor/Technician
+  DOWN_SCHEDULED // Down – Scheduled for Repair
+  DOWN_AWAITING_REPLACEMENT // Down – Awaiting Replacement Decision
+  RETIRED // Retired / Permanently Removed
+}
+
+enum CauseCategory {
+  MOTOR_MECHANICAL
+  BELT_DRIVE_CHAIN
+  ELECTRICAL_POWER
+  ELECTRONICS // console / display / sensors
+  SOFTWARE_FIRMWARE
+  HYDRAULIC_PNEUMATIC
+  CABLE_PULLEY
+  FRAME_STRUCTURAL
+  VANDALISM_MISUSE
+  UNKNOWN_OTHER
+}
+
+enum BuildingLevel {
+  ENTRY // Weight Floor
+  BALCONY // Cardio deck
+  LOWER_2 // Functional Training Room + Weights/Strength (PT studio)
+}
+
+enum IconCategory {
+  TREADMILL
+  ELLIPTICAL
+  BIKE // upright / recumbent / airdyne
+  ROWER_SKI
+  STAIR_CLIMBER
+  ARC_TRAINER
+  CURVED_TREADMILL
+  BENCH
+  RACK_SMITH // squat rack / smith / hack
+  LEG_MACHINE // press / extension / curl / calf
+  CABLE_PULLEY
+  SELECTORIZED_UPPER
+  DUMBBELL_RACK
+  FUNCTIONAL_TOOL
+  SPECIALTY
+}
+
+enum ManualMatch {
+  EXACT // confident exact-model manual on file
+  LIKELY // real manual exists, inventory code differs from official code
+  NOT_FOUND // no manual located
+  NEEDS_NAMEPLATE // inventory "model" is a serial/SKU; physical check required
+  UNREVIEWED // added after the research pass
+}
+
+// ─── Models ──────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Equipment {
+  id     String @id @default(cuid())
+  itemId String @unique // "Primary Item ID" from the inventory sheet
+
+  name        String // display name
+  rawItemName String // "Item Name" exactly as imported
+  brand       String
+  model       String? // as imported (may be serial/SKU — see manualMatch)
+  modelNote   String? // corrected/official code, e.g. "CMACO" for CMACC
+  serial      String?
+  quantity    Int     @default(1)
+
+  zone         String // raw inventory zone label
+  level        BuildingLevel
+  mapX         Float? // 0–1 normalized position on the level map
+  mapY         Float?
+  iconCategory IconCategory  @default(SPECIALTY)
+
+  vendor            String?
+  purchaseDate      DateTime?
+  cost              Decimal?  @db.Decimal(10, 2)
+  warrantyMonths    Int?
+  warrantyExpiresAt DateTime?
+
+  manualUrl     String? // manufacturer's online manual
+  manualPdfUrl  String? // stored searchable PDF (Vercel Blob)
+  manualMatch   ManualMatch @default(UNREVIEWED)
+  manualComment String? // discrepancy notes from research
+
+  status    EquipmentStatus @default(IN_SERVICE)
+  retiredAt DateTime?
+  notes     String?
+
+  events      DowntimeEvent[]
+  maintenance MaintenanceRecord[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([level, status])
+  @@index([brand])
+}
+
+model DowntimeEvent {
+  id          String    @id @default(cuid())
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  status     EquipmentStatus // current down-substatus while open; last substatus once closed
+  cause      CauseCategory   @default(UNKNOWN_OTHER)
+  openedAt   DateTime        @default(now())
+  closedAt   DateTime?
+  repairCost Decimal?        @db.Decimal(10, 2)
+  notes      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([equipmentId, openedAt])
+  @@index([closedAt])
+}
+
+model MaintenanceRecord {
+  id          String    @id @default(cuid())
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  date  DateTime @default(now())
+  notes String
+  cost  Decimal? @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+
+  @@index([equipmentId, date])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorEmail String // denormalized so history survives user deletion
+  action     String // e.g. "equipment.status_change", "auth.login", "downtime.open"
+  targetType String? // "Equipment" | "DowntimeEvent" | "MaintenanceRecord" | "User"
+  targetId   String?
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}

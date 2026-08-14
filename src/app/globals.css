@@ -1,26 +1,68 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ── BGSU-SRC ops-center palette ── */
+  --bg: #0a0e14;
+  --bg-raised: #0f141d;
+  --surface: #131a26;
+  --surface-hover: #182130;
+  --line: rgba(148, 163, 184, 0.1);
+  --line-strong: rgba(148, 163, 184, 0.22);
+
+  --text: #e6ebf4;
+  --text-secondary: #9aa5b8;
+  --text-faint: #5c6778;
+
+  /* Interactive accent — reserved for UI, never status */
+  --accent: #2dd4bf;
+  --accent-soft: rgba(45, 212, 191, 0.12);
+  --accent-glow: rgba(45, 212, 191, 0.35);
+
+  /* Status language — exclusive to equipment state */
+  --status-up: #34d399;
+  --status-up-glow: rgba(52, 211, 153, 0.4);
+  --status-warn: #fbbf24; /* parts ordered / scheduled / vendor */
+  --status-warn-glow: rgba(251, 191, 36, 0.4);
+  --status-down: #f87171; /* reported-diagnosing / replacement decision */
+  --status-down-glow: rgba(248, 113, 113, 0.45);
+  --status-retired: #64748b;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg: var(--bg);
+  --color-bg-raised: var(--bg-raised);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--text);
+  --color-ink-secondary: var(--text-secondary);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-up: var(--status-up);
+  --color-warn: var(--status-warn);
+  --color-down: var(--status-down);
+  --color-retired: var(--status-retired);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--bg);
+  color: var(--text);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background:
+    radial-gradient(1200px 800px at 75% -10%, rgba(45, 212, 191, 0.06), transparent 60%),
+    radial-gradient(900px 600px at -10% 110%, rgba(56, 130, 246, 0.05), transparent 55%),
+    var(--bg);
+  min-height: 100dvh;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
