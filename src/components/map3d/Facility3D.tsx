@@ -54,9 +54,43 @@ function signedArea(pts: number[][]): number {
   return a / 2;
 }
 
-// The track infield: the entry-level courts diamond, shrunk to sit inside the
-// balcony ring. Used both as the plate hole and as the lane-line guide.
-const INFIELD = scalePoly(FLOORPLANS.entry.courts![0], 0.88);
+// Chaikin corner-cutting: turns traced polygons into smooth curves.
+function chaikin(pts: number[][], iterations: number): number[][] {
+  let out = pts;
+  for (let it = 0; it < iterations; it++) {
+    const next: number[][] = [];
+    for (let i = 0; i < out.length; i++) {
+      const [ax, ay] = out[i];
+      const [bx, by] = out[(i + 1) % out.length];
+      next.push([0.75 * ax + 0.25 * bx, 0.75 * ay + 0.25 * by]);
+      next.push([0.25 * ax + 0.75 * bx, 0.25 * ay + 0.75 * by]);
+    }
+    out = next;
+  }
+  return out;
+}
+
+// Parallel offset of a closed polygon along vertex normals (px units).
+function offsetPoly(pts: number[][], d: number): number[][] {
+  const n = pts.length;
+  const sign = signedArea(pts) > 0 ? 1 : -1;
+  return pts.map((_, i) => {
+    const [px, py] = pts[i];
+    const [ax, ay] = pts[(i - 1 + n) % n];
+    const [bx, by] = pts[(i + 1) % n];
+    let e1x = px - ax, e1y = py - ay;
+    let e2x = bx - px, e2y = by - py;
+    const l1 = Math.hypot(e1x, e1y) || 1, l2 = Math.hypot(e2x, e2y) || 1;
+    e1x /= l1; e1y /= l1; e2x /= l2; e2y /= l2;
+    let nx = (e1y + e2y) / 2 * sign, ny = -(e1x + e2x) / 2 * sign;
+    const ln = Math.hypot(nx, ny) || 1;
+    return [px + (nx / ln) * d, py + (ny / ln) * d];
+  });
+}
+
+// The track infield: the entry-level courts diamond, shrunk and smoothed into
+// a clean curve. Used as the plate hole and the lane-line guide.
+const INFIELD = chaikin(scalePoly(FLOORPLANS.entry.courts![0], 0.88), 3);
 
 function polyShape(pts: number[][]): THREE.Shape {
   const shape = new THREE.Shape();
@@ -78,7 +112,7 @@ function FloorPlate({ level, faded }: { level: LevelKey; faded: boolean }) {
     // track (the traced fitness poly), leaving the atrium open to the entry
     // floor below — like the architectural rendering. Other levels extrude
     // their full silhouette.
-    const plateSrc = level === "balcony" ? plan.fitness ?? [] : plan.silhouette ?? [];
+    const plateSrc = level === "balcony" ? (plan.fitness ?? []).map((pts) => chaikin(pts, 2)) : plan.silhouette ?? [];
     const sil = plateSrc.map((pts) => {
       const shape = polyShape(pts);
       if (level === "balcony") {
@@ -105,17 +139,17 @@ function FloorPlate({ level, faded }: { level: LevelKey; faded: boolean }) {
     <group position={[0, y, 0]} rotation={[Math.PI / 2, 0, 0]}>
       {geoms.sil.map((g, i) => (
         <mesh key={`s${i}`} geometry={g} receiveShadow>
-          <meshLambertMaterial color={level === "balcony" ? "#8a4a28" : "#5c473a"} transparent opacity={opacity} side={THREE.DoubleSide} />
+          <meshLambertMaterial color={level === "balcony" ? "#75838d" : "#9c948b"} transparent opacity={opacity} side={THREE.DoubleSide} />
         </mesh>
       ))}
       {geoms.fit.map((g, i) => (
         <mesh key={`f${i}`} geometry={g} position={[0, 0, -0.02]}>
-          <meshLambertMaterial color="#7c4a2a" transparent opacity={faded ? 0.1 : 0.95} side={THREE.DoubleSide} />
+          <meshLambertMaterial color="#63503f" transparent opacity={faded ? 0.1 : 0.95} side={THREE.DoubleSide} />
         </mesh>
       ))}
       {geoms.courts.map((g, i) => (
         <mesh key={`c${i}`} geometry={g} position={[0, 0, -0.02]}>
-          <meshLambertMaterial color="#9a7a4e" transparent opacity={faded ? 0.1 : 0.95} side={THREE.DoubleSide} />
+          <meshLambertMaterial color="#c9a06a" transparent opacity={faded ? 0.1 : 0.95} side={THREE.DoubleSide} />
         </mesh>
       ))}
     </group>
@@ -261,8 +295,8 @@ const CAMS: Record<string, { pos: [number, number, number]; tgt: [number, number
 function TrackLanes({ faded }: { faded: boolean }) {
   const loops = useMemo(
     () =>
-      [1.015, 1.07, 1.125].map((f) => {
-        const pts = scalePoly(INFIELD, f);
+      [16, 34, 52].map((d) => {
+        const pts = offsetPoly(INFIELD, d);
         return new Float32Array(pts.flatMap(([px, py]) => [(px - CX) * S, LEVEL_Y.balcony + 0.04, (py - CY) * S]));
       }),
     [],
@@ -274,7 +308,7 @@ function TrackLanes({ faded }: { faded: boolean }) {
           <bufferGeometry>
             <bufferAttribute attach="attributes-position" args={[arr, 3]} />
           </bufferGeometry>
-          <lineBasicMaterial color="#f0e6d6" transparent opacity={faded ? 0.06 : 0.55} />
+          <lineBasicMaterial color="#eef2f5" transparent opacity={faded ? 0.06 : 0.75} />
         </lineLoop>
       ))}
     </>
@@ -359,7 +393,7 @@ function Caption({ text, at, y }: { text: string; at: [number, number]; y: numbe
       rotation={[-Math.PI / 2, 0, 0]}
       fontSize={1.5}
       letterSpacing={0.35}
-      color="#d9c3a5"
+      color="#d9d4cc"
       fillOpacity={0.65}
       anchorX="center"
     >
@@ -414,6 +448,10 @@ export function Facility3D({
       />
       <hemisphereLight intensity={0.35} color="#ffe0c2" groundColor="#2a1c12" />
 
+      <mesh position={[0, -0.9, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <circleGeometry args={[130, 48]} />
+        <meshLambertMaterial color="#151110" />
+      </mesh>
       {(["lower2", "entry", "balcony"] as LevelKey[]).map((lk) => (
         <FloorPlate key={lk} level={lk} faded={focus !== null && focus !== lk} />
       ))}
