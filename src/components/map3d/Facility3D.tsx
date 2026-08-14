@@ -150,22 +150,22 @@ function FloorPlate({ level, faded }: { level: LevelKey; faded: boolean }) {
     <group position={[0, y, 0]} rotation={[Math.PI / 2, 0, 0]}>
       {geoms.sil.map((g, i) => (
         <mesh key={`s${i}`} geometry={g} receiveShadow>
-          <meshLambertMaterial color={level === "balcony" ? "#75838d" : "#9c948b"} transparent opacity={opacity} side={THREE.DoubleSide} />
+          <meshLambertMaterial color={level === "balcony" ? "#75838d" : "#9c948b"} transparent={faded} opacity={opacity} side={THREE.DoubleSide} />
         </mesh>
       ))}
       {geoms.fit.map((g, i) => (
         <mesh key={`f${i}`} geometry={g} position={[0, 0, -0.02]}>
-          <meshLambertMaterial color="#63503f" transparent opacity={faded ? 0.1 : 0.95} side={THREE.DoubleSide} />
+          <meshLambertMaterial color="#63503f" transparent={faded} opacity={faded ? 0.1 : 1} side={THREE.DoubleSide} />
         </mesh>
       ))}
       {geoms.courts.map((g, i) => (
-        <mesh key={`c${i}`} geometry={g} position={[0, 0, -0.02]}>
-          <meshLambertMaterial color="#c9a06a" transparent opacity={faded ? 0.1 : 0.95} side={THREE.DoubleSide} />
+        <mesh key={`c${i}`} geometry={g} position={[0, 0, -0.035]}>
+          <meshLambertMaterial color="#c9a06a" transparent={faded} opacity={faded ? 0.1 : 1} side={THREE.DoubleSide} />
         </mesh>
       ))}
       {geoms.zones.map(({ geo, c }, i) => (
-        <mesh key={`z${i}`} geometry={geo} position={[0, 0, -0.02]}>
-          <meshLambertMaterial color={c} transparent opacity={faded ? 0.08 : 0.9} side={THREE.DoubleSide} />
+        <mesh key={`z${i}`} geometry={geo} position={[0, 0, -0.05 - i * 0.012]}>
+          <meshLambertMaterial color={c} transparent={faded} opacity={faded ? 0.08 : 1} side={THREE.DoubleSide} />
         </mesh>
       ))}
     </group>
@@ -185,12 +185,12 @@ function Rail({ faded }: { faded: boolean }) {
       {posts.map((x) => (
         <mesh key={x} position={[x, y + 0.55, z]}>
           <cylinderGeometry args={[0.03, 0.03, 1.1, 6]} />
-          <meshLambertMaterial color="#9a958f" transparent opacity={opacity} />
+          <meshLambertMaterial color="#9a958f" transparent={faded} opacity={opacity} />
         </mesh>
       ))}
       <mesh position={[(x0 + x1) / 2, y + 1.1, z]}>
         <boxGeometry args={[x1 - x0, 0.07, 0.07]} />
-        <meshLambertMaterial color="#b3aca4" transparent opacity={opacity} />
+        <meshLambertMaterial color="#b3aca4" transparent={faded} opacity={opacity} />
       </mesh>
     </group>
   );
@@ -269,18 +269,18 @@ function Unit({
     >
       <EquipmentModel category={e.iconCategory} />
       {/* status ring on the floor */}
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.65, 0.82, 24]} />
         <meshBasicMaterial color={TONE_3D[tone]} transparent opacity={attention ? 0.85 : 0.35} />
       </mesh>
       {attention && (
-        <mesh name="halo" position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh name="halo" position={[0, 0.11, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <circleGeometry args={[1.1, 24]} />
           <meshBasicMaterial color={TONE_3D[tone]} transparent opacity={0.4} />
         </mesh>
       )}
       {(selected || hovered) && (
-        <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh position={[0, 0.12, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.9, 1.02, 24]} />
           <meshBasicMaterial color="#fe5000" transparent opacity={0.95} />
         </mesh>
@@ -339,16 +339,16 @@ function Pool({ faded }: { faded: boolean }) {
     <group position={[x, LEVEL_Y.entry + 0.02, z]} rotation={[0, Math.PI / 4, 0]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[26, 54]} />
-        <meshLambertMaterial color="#a9b2b5" transparent opacity={faded ? 0.08 : 0.95} />
+        <meshLambertMaterial color="#a9b2b5" transparent={faded} opacity={faded ? 0.08 : 1} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <planeGeometry args={[21, 47]} />
-        <meshLambertMaterial color="#4d7fa6" transparent opacity={faded ? 0.1 : 0.97} />
+        <meshLambertMaterial color="#4d7fa6" transparent={faded} opacity={faded ? 0.1 : 1} />
       </mesh>
       {lanes.map((lx) => (
         <mesh key={lx} position={[lx, 0.04, 0]}>
           <boxGeometry args={[0.14, 0.02, 45]} />
-          <meshLambertMaterial color="#d8e8f2" transparent opacity={faded ? 0.1 : 0.9} />
+          <meshLambertMaterial color="#d8e8f2" transparent={faded} opacity={faded ? 0.1 : 1} />
         </mesh>
       ))}
     </group>
@@ -369,7 +369,7 @@ function Courts({ faded }: { faded: boolean }) {
         return (
           <mesh key={i} position={[x, LEVEL_Y.entry + 0.03, z]} rotation={[-Math.PI / 2, 0, Math.PI / 4]}>
             <planeGeometry args={[15, 26]} />
-            <meshLambertMaterial color="#b5682f" transparent opacity={faded ? 0.08 : 0.9} />
+            <meshLambertMaterial color="#b5682f" transparent={faded} opacity={faded ? 0.08 : 1} />
           </mesh>
         );
       })}
