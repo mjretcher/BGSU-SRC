@@ -35,7 +35,7 @@ const EDITABLE = [
   "name", "brand", "model", "modelNote", "serial", "vendor", "notes",
   "manualUrl", "manualPdfUrl", "manualMatch", "manualComment",
   "purchaseDate", "cost", "warrantyMonths", "warrantyExpiresAt",
-  "mapX", "mapY", "iconCategory",
+  "mapX", "mapY", "iconCategory", "level", "zone",
 ] as const;
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -65,4 +65,32 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   await audit(guard.user.email, isPinMove ? "equipment.pin_moved" : "equipment.updated", "Equipment", id, before, data);
 
   return NextResponse.json({ ok: true, equipment: { ...updated, cost: updated.cost?.toString() ?? null } });
+}
+
+export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const guard = guardMutation(req);
+  if ("error" in guard) return guard.error;
+  const { id } = await ctx.params;
+  const equipment = await db.equipment.findUnique({
+    where: { id },
+    include: { _count: { select: { events: true, maintenance: true } } },
+  });
+  if (!equipment) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Full snapshot into the audit log — deleting cascades events/maintenance,
+  // so this entry is the surviving historical record.
+  await audit(guard.user.email, "equipment.deleted", "Equipment", id, {
+    itemId: equipment.itemId,
+    name: equipment.name,
+    brand: equipment.brand,
+    model: equipment.model,
+    serial: equipment.serial,
+    level: equipment.level,
+    zone: equipment.zone,
+    status: equipment.status,
+    events: equipment._count.events,
+    maintenance: equipment._count.maintenance,
+  });
+  await db.equipment.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
 }

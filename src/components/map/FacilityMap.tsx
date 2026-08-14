@@ -85,6 +85,13 @@ export function FacilityMap({
       const fy = Math.min(1, Math.max(0, (me.clientY - r.top) / r.height));
       const { mapX, mapY } = unprojectPin(fx, fy);
       onMove(e.id, mapX, mapY);
+      // parent state now owns the position; drop the local override so
+      // later prop changes (e.g. undo) reflect on screen
+      setDragOverride((prev) => {
+        const next = { ...prev };
+        delete next[e.id];
+        return next;
+      });
       dragRef.current = null;
     };
     window.addEventListener("pointermove", move);

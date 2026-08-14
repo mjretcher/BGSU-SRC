@@ -15,14 +15,30 @@ export function MapScreen({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [arrange, setArrange] = useState(false);
   const [local, setLocal] = useState(equipment);
+  const [undoStack, setUndoStack] = useState<{ id: string; x: number; y: number; name: string }[]>([]);
 
-  async function move(id: string, x: number, y: number) {
+  async function persistMove(id: string, x: number, y: number) {
     setLocal((prev) => prev.map((e) => (e.id === id ? { ...e, mapX: x, mapY: y } : e)));
     await fetch(`/api/equipment/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mapX: x, mapY: y }),
     });
+  }
+
+  async function move(id: string, x: number, y: number) {
+    const before = local.find((e) => e.id === id);
+    if (before) {
+      setUndoStack((st) => [...st.slice(-19), { id, x: before.mapX, y: before.mapY, name: before.name }]);
+    }
+    await persistMove(id, x, y);
+  }
+
+  async function undo() {
+    const last = undoStack[undoStack.length - 1];
+    if (!last) return;
+    setUndoStack((st) => st.slice(0, -1));
+    await persistMove(last.id, last.x, last.y);
   }
 
   return (
@@ -55,6 +71,15 @@ export function MapScreen({
             <span className="rounded-full border border-down/40 bg-down/10 px-3 py-1.5 font-mono text-[12px] text-down">
               ⚑ {counts.flagged} flagged
             </span>
+          )}
+          {undoStack.length > 0 && (
+            <button
+              onClick={undo}
+              title={`Move ${undoStack[undoStack.length - 1].name} back`}
+              className="rounded-lg border border-line-strong px-3.5 py-1.5 text-[13px] text-ink-secondary transition hover:border-accent/50 hover:text-ink"
+            >
+              ↩ Undo move
+            </button>
           )}
           <button
             onClick={() => setArrange((a) => !a)}

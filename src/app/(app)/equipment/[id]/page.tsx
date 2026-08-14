@@ -218,6 +218,10 @@ export default async function EquipmentDetail({ params }: { params: Promise<{ id
         <EquipmentEditForm
           equipment={{
             id: e.id,
+            itemId: e.itemId,
+            level: e.level,
+            zone: e.zone,
+            iconCategory: e.iconCategory,
             name: e.name,
             brand: e.brand,
             model: e.model,

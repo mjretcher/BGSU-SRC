@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { MapIcon, TableIcon, ChartIcon, ShieldIcon, ScrollIcon, LogoutIcon } from "./icons";
+import { MapIcon, TableIcon, ChartIcon, ShieldIcon, ScrollIcon, LogoutIcon, UsersIcon } from "./icons";
 
 const NAV = [
   { href: "/", label: "Facility Map", Icon: MapIcon },
@@ -10,6 +10,7 @@ const NAV = [
   { href: "/reports", label: "Reports", Icon: ChartIcon },
   { href: "/warranty", label: "Warranty", Icon: ShieldIcon },
   { href: "/audit", label: "Audit Trail", Icon: ScrollIcon },
+  { href: "/users", label: "Users", Icon: UsersIcon },
 ];
 
 export function AppShell({ children, userName }: { children: React.ReactNode; userName: string }) {

@@ -256,3 +256,34 @@ export const LayersIcon = (p: P) => (
     <path d="m3 17.5 9 5 9-5" opacity={0.3} />
   </Base>
 );
+
+export const UsersIcon = (p: P) => (
+  <Base {...p}>
+    <circle cx="9" cy="8" r="3.2" />
+    <path d="M3.5 19.5c.6-3.2 2.9-5 5.5-5s4.9 1.8 5.5 5" />
+    <circle cx="17" cy="9.5" r="2.4" opacity={0.6} />
+    <path d="M16 14.6c2.3.2 4 1.8 4.5 4.4" opacity={0.6} />
+  </Base>
+);
+
+export const EyeIcon = (p: P) => (
+  <Base {...p}>
+    <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+    <circle cx="12" cy="12" r="3" />
+  </Base>
+);
+
+export const EyeOffIcon = (p: P) => (
+  <Base {...p}>
+    <path d="M4 4l16 16" />
+    <path d="M10.6 6c.5-.1.9-.1 1.4-.1 6 0 9.5 6.1 9.5 6.1a17.5 17.5 0 0 1-2.7 3.4M6.6 6.9A16.8 16.8 0 0 0 2.5 12S6 18.5 12 18.5c1.5 0 2.9-.4 4.1-1" />
+    <path d="M9.9 10a3 3 0 0 0 4.2 4.2" />
+  </Base>
+);
+
+export const UndoIcon = (p: P) => (
+  <Base {...p}>
+    <path d="M4 10h10a6 6 0 0 1 0 12h-3" />
+    <path d="m8 6-4 4 4 4" />
+  </Base>
+);
