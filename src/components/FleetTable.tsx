@@ -1,20 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { STATUS_SHORT, STATUS_TONE, TONE_COLOR, LEVEL_LABEL } from "@/lib/status";
+import { STATUS_SHORT, STATUS_TONE, TONE_COLOR, LEVEL_LABEL, ICON_LABEL } from "@/lib/status";
+import { CATEGORY_ICON } from "./icons";
+import type { IconCategory } from "@/generated/prisma/enums";
 import { fmtDuration, fmtMoney } from "@/lib/metrics";
 import type { EquipmentStatus, BuildingLevel } from "@/generated/prisma/enums";
 
 export interface FleetRowSerialized {
   id: string; itemId: string; name: string; brand: string; model: string | null;
+  iconCategory: string;
   level: string; zone: string; status: string; flagged: boolean; flagPct: number;
   downtimePct: number; daysDown: number; eventCount: number;
   mttrMs: number | null; mtbfMs: number | null; repairCost: number;
 }
 
-type SortKey = "downtimePct" | "repairCost" | "mttrMs" | "mtbfMs" | "eventCount" | "name";
+type SortKey = "type" | "downtimePct" | "repairCost" | "mttrMs" | "mtbfMs" | "eventCount" | "name";
 
 const PERIODS = [
   ["week", "Week"],
@@ -30,7 +33,7 @@ export function FleetTable({ rows, period }: { rows: FleetRowSerialized[]; perio
   const [level, setLevel] = useState<string>("all");
   const [onlyDown, setOnlyDown] = useState(false);
   const [onlyFlagged, setOnlyFlagged] = useState(false);
-  const [sort, setSort] = useState<SortKey>("downtimePct");
+  const [sort, setSort] = useState<SortKey>("type");
   const [dir, setDir] = useState<1 | -1>(-1);
 
   const filtered = useMemo(() => {
@@ -42,13 +45,21 @@ export function FleetTable({ rows, period }: { rows: FleetRowSerialized[]; perio
           r.name.toLowerCase().includes(needle) ||
           r.brand.toLowerCase().includes(needle) ||
           (r.model ?? "").toLowerCase().includes(needle) ||
-          r.itemId.toLowerCase().includes(needle),
+          r.itemId.toLowerCase().includes(needle) ||
+          ICON_LABEL[r.iconCategory as IconCategory].toLowerCase().includes(needle),
       );
     }
     if (level !== "all") out = out.filter((r) => r.level === level);
     if (onlyDown) out = out.filter((r) => STATUS_TONE[r.status as EquipmentStatus] !== "up" && r.status !== "RETIRED");
     if (onlyFlagged) out = out.filter((r) => r.flagged);
     return [...out].sort((a, b) => {
+      if (sort === "type") {
+        return (
+          ICON_LABEL[a.iconCategory as IconCategory].localeCompare(ICON_LABEL[b.iconCategory as IconCategory]) ||
+          a.name.localeCompare(b.name) ||
+          a.itemId.localeCompare(b.itemId, undefined, { numeric: true })
+        );
+      }
       if (sort === "name") return dir * a.name.localeCompare(b.name);
       const av = a[sort] ?? -Infinity;
       const bv = b[sort] ?? -Infinity;
@@ -88,8 +99,8 @@ export function FleetTable({ rows, period }: { rows: FleetRowSerialized[]; perio
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search name, brand, model, ID…"
-          className="w-64 rounded-lg border border-line-strong bg-surface px-3.5 py-2 text-sm text-ink outline-none transition focus:border-accent"
+          placeholder="Search anything — treadmill, Hammer Strength, TI1000, #110…"
+          className="w-80 rounded-lg border border-line-strong bg-surface px-3.5 py-2 text-sm text-ink outline-none transition focus:border-accent"
         />
         <select
           value={level}
@@ -137,7 +148,14 @@ export function FleetTable({ rows, period }: { rows: FleetRowSerialized[]; perio
         <table className="w-full min-w-[900px] border-collapse bg-surface/50 text-sm">
           <thead className="border-b border-line bg-bg-raised/60">
             <tr>
-              {header("name", "Equipment", false)}
+              <th
+                onClick={() => setSort(sort === "type" ? "name" : "type")}
+                className={`cursor-pointer select-none whitespace-nowrap px-3 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider transition hover:text-ink ${
+                  sort === "type" || sort === "name" ? "text-accent" : "text-[color:var(--text-faint)]"
+                }`}
+              >
+                {sort === "name" ? "Equipment A–Z" : "Equipment · by type"}
+              </th>
               <th className="px-3 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider text-[color:var(--text-faint)]">Status</th>
               {header("downtimePct", "% Down")}
               {header("eventCount", "Events")}
@@ -147,10 +165,26 @@ export function FleetTable({ rows, period }: { rows: FleetRowSerialized[]; perio
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r) => {
+            {filtered.map((r, i) => {
               const tone = STATUS_TONE[r.status as EquipmentStatus];
+              const cat = r.iconCategory as IconCategory;
+              const CatIcon = CATEGORY_ICON[cat];
+              const newGroup = sort === "type" && (i === 0 || filtered[i - 1].iconCategory !== r.iconCategory);
+              const groupCount = sort === "type" ? filtered.filter((x) => x.iconCategory === r.iconCategory).length : 0;
               return (
-                <tr key={r.id} className="border-b border-line/50 transition last:border-0 hover:bg-surface-hover">
+                <Fragment key={r.id}>
+                {newGroup && (
+                  <tr className="border-b border-line bg-bg-raised/70">
+                    <td colSpan={7} className="px-3 py-2">
+                      <span className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-accent">
+                        <CatIcon className="h-4 w-4" />
+                        {ICON_LABEL[cat]}
+                        <span className="font-mono text-[11px] font-normal text-[color:var(--text-faint)]">{groupCount}</span>
+                      </span>
+                    </td>
+                  </tr>
+                )}
+                <tr className="border-b border-line/50 transition last:border-0 hover:bg-surface-hover">
                   <td className="px-3 py-2.5">
                     <Link href={`/equipment/${r.id}`} className="group block">
                       <span className="flex items-center gap-2">
@@ -182,6 +216,7 @@ export function FleetTable({ rows, period }: { rows: FleetRowSerialized[]; perio
                     {r.repairCost > 0 ? fmtMoney(r.repairCost) : <span className="text-[color:var(--text-faint)]">—</span>}
                   </td>
                 </tr>
+                </Fragment>
               );
             })}
           </tbody>

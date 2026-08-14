@@ -132,7 +132,18 @@ function FloorPlate({ level, faded }: { level: LevelKey; faded: boolean }) {
     });
     const fit = level === "balcony" ? [] : (plan.fitness ?? []).map((pts) => new THREE.ShapeGeometry(polyShape(pts)));
     const courts = (plan.courts ?? []).map((pts) => new THREE.ShapeGeometry(polyShape(pts)));
-    return { sil, fit, courts };
+    // real-material tints for the support spaces we traced from the plans
+    const ZONE_MATS: [keyof typeof plan, string][] = [
+      ["lounge", "#8a8178"],
+      ["multi", "#7d7484"],
+      ["offices", "#717a74"],
+      ["locker", "#6f7a81"],
+      ["restroom", "#857b71"],
+    ];
+    const zones = ZONE_MATS.flatMap(([k, c]) =>
+      ((plan[k] as number[][][] | undefined) ?? []).map((pts) => ({ geo: new THREE.ShapeGeometry(polyShape(pts)), c })),
+    );
+    return { sil, fit, courts, zones };
   }, [plan, level]);
   const opacity = faded ? 0.12 : 1;
   return (
@@ -150,6 +161,11 @@ function FloorPlate({ level, faded }: { level: LevelKey; faded: boolean }) {
       {geoms.courts.map((g, i) => (
         <mesh key={`c${i}`} geometry={g} position={[0, 0, -0.02]}>
           <meshLambertMaterial color="#c9a06a" transparent opacity={faded ? 0.1 : 0.95} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
+      {geoms.zones.map(({ geo, c }, i) => (
+        <mesh key={`z${i}`} geometry={geo} position={[0, 0, -0.02]}>
+          <meshLambertMaterial color={c} transparent opacity={faded ? 0.08 : 0.9} side={THREE.DoubleSide} />
         </mesh>
       ))}
     </group>
@@ -315,6 +331,30 @@ function TrackLanes({ faded }: { faded: boolean }) {
   );
 }
 
+// The natatorium: pool water, deck, and lane ropes in the west hall.
+function Pool({ faded }: { faded: boolean }) {
+  const [x, z] = toWorld(770 / FLOORPLAN_W, 815 / FLOORPLAN_H);
+  const lanes = [-7.8, -5.2, -2.6, 0, 2.6, 5.2, 7.8];
+  return (
+    <group position={[x, LEVEL_Y.entry + 0.02, z]} rotation={[0, Math.PI / 4, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[26, 54]} />
+        <meshLambertMaterial color="#a9b2b5" transparent opacity={faded ? 0.08 : 0.95} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+        <planeGeometry args={[21, 47]} />
+        <meshLambertMaterial color="#4d7fa6" transparent opacity={faded ? 0.1 : 0.97} />
+      </mesh>
+      {lanes.map((lx) => (
+        <mesh key={lx} position={[lx, 0.04, 0]}>
+          <boxGeometry args={[0.14, 0.02, 45]} />
+          <meshLambertMaterial color="#d8e8f2" transparent opacity={faded ? 0.1 : 0.9} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 // Orange court rectangles on the entry floor, seen through the track well.
 function Courts({ faded }: { faded: boolean }) {
   const courts: { c: [number, number]; }[] = [
@@ -457,12 +497,17 @@ export function Facility3D({
       ))}
       <Rail faded={focus !== null && focus !== "balcony"} />
       <TrackLanes faded={focus !== null && focus !== "balcony"} />
+      <Pool faded={focus !== null && focus !== "entry"} />
       <Courts faded={focus !== null && focus !== "entry"} />
 
       {(focus === null || focus === "entry") && (
         <>
           <Caption text="FREE WEIGHTS" at={capt(1075, 935)} y={LEVEL_Y.entry} />
           <Caption text="STRENGTH" at={capt(1460, 935)} y={LEVEL_Y.entry} />
+          <Caption text="SWIMMING" at={capt(560, 560)} y={LEVEL_Y.entry} />
+          <Caption text="COURTS" at={capt(1720, 560)} y={LEVEL_Y.entry} />
+          <Caption text="CLIMBING WALL" at={capt(420, 1090)} y={LEVEL_Y.entry} />
+          <Caption text="LOUNGE" at={capt(1180, 1180)} y={LEVEL_Y.entry} />
         </>
       )}
       {(focus === null || focus === "balcony") && (

@@ -13,6 +13,7 @@ export default async function FleetPage({ searchParams }: { searchParams: Promis
 
   const serialized: FleetRowSerialized[] = rows.map((r) => ({
     id: r.id, itemId: r.itemId, name: r.name, brand: r.brand, model: r.model,
+    iconCategory: r.iconCategory,
     level: r.level, zone: r.zone, status: r.status, flagged: r.flagged, flagPct: r.flagPct,
     downtimePct: r.metrics.downtimePct, daysDown: r.metrics.daysDown,
     eventCount: r.metrics.eventCount, mttrMs: r.metrics.mttrMs, mtbfMs: r.metrics.mtbfMs,
