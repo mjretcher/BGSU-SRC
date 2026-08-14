@@ -6,6 +6,12 @@
       "runtimeExecutable": "zsh",
       "runtimeArgs": ["-c", "cd /Users/mike/Documents/BGSU-SRC; export NVM_DIR=\"$HOME/.nvm\"; . \"$NVM_DIR/nvm.sh\"; exec npx next dev --port 3100"],
       "port": 3100
+    },
+    {
+      "name": "bgsu-src-prod",
+      "runtimeExecutable": "zsh",
+      "runtimeArgs": ["-c", "cd /Users/mike/Documents/BGSU-SRC; export NVM_DIR=\"$HOME/.nvm\"; . \"$NVM_DIR/nvm.sh\"; exec npx next start --port 3100"],
+      "port": 3100
     }
   ]
 }
