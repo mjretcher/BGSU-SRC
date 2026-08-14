@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "bgsu-src-dev",
+      "runtimeExecutable": "zsh",
+      "runtimeArgs": ["-c", "cd /Users/mike/Documents/BGSU-SRC; export NVM_DIR=\"$HOME/.nvm\"; . \"$NVM_DIR/nvm.sh\"; exec npx next dev --port 3100"],
+      "port": 3100
+    }
+  ]
+}
