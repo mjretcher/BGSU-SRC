@@ -2,7 +2,7 @@
 
 // SketchUp-mockup-style interactive 3D facility: extruded floor plates from
 // the traced plan geometry, massing models per machine, BGSU materials.
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, Text, Html } from "@react-three/drei";
 import * as THREE from "three";
@@ -33,6 +33,31 @@ function toWorld(mapX: number, mapY: number): [number, number] {
   return [(mapX * FLOORPLAN_W - CX) * S, (mapY * FLOORPLAN_H - CY) * S];
 }
 
+function centroidOf(pts: number[][]): [number, number] {
+  let sx = 0, sy = 0;
+  for (const [x, y] of pts) { sx += x; sy += y; }
+  return [sx / pts.length, sy / pts.length];
+}
+
+function scalePoly(pts: number[][], f: number): number[][] {
+  const [cx, cy] = centroidOf(pts);
+  return pts.map(([x, y]) => [cx + (x - cx) * f, cy + (y - cy) * f]);
+}
+
+function signedArea(pts: number[][]): number {
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const [x1, y1] = pts[i];
+    const [x2, y2] = pts[(i + 1) % pts.length];
+    a += x1 * y2 - x2 * y1;
+  }
+  return a / 2;
+}
+
+// The track infield: the entry-level courts diamond, shrunk to sit inside the
+// balcony ring. Used both as the plate hole and as the lane-line guide.
+const INFIELD = scalePoly(FLOORPLANS.entry.courts![0], 0.88);
+
 function polyShape(pts: number[][]): THREE.Shape {
   const shape = new THREE.Shape();
   pts.forEach(([x, y], i) => {
@@ -54,7 +79,23 @@ function FloorPlate({ level, faded }: { level: LevelKey; faded: boolean }) {
     // floor below — like the architectural rendering. Other levels extrude
     // their full silhouette.
     const plateSrc = level === "balcony" ? plan.fitness ?? [] : plan.silhouette ?? [];
-    const sil = plateSrc.map((pts) => new THREE.ExtrudeGeometry(polyShape(pts), { depth: 0.5, bevelEnabled: false }));
+    const sil = plateSrc.map((pts) => {
+      const shape = polyShape(pts);
+      if (level === "balcony") {
+        // open the court well: hole wound opposite to the outer boundary
+        const holePts = signedArea(pts) * signedArea(INFIELD) > 0 ? [...INFIELD].reverse() : INFIELD;
+        const hole = new THREE.Path();
+        holePts.forEach(([x, y], i) => {
+          const wx = (x - CX) * S;
+          const wy = (y - CY) * S;
+          if (i === 0) hole.moveTo(wx, wy);
+          else hole.lineTo(wx, wy);
+        });
+        hole.closePath();
+        shape.holes.push(hole);
+      }
+      return new THREE.ExtrudeGeometry(shape, { depth: 0.5, bevelEnabled: false });
+    });
     const fit = level === "balcony" ? [] : (plan.fitness ?? []).map((pts) => new THREE.ShapeGeometry(polyShape(pts)));
     const courts = (plan.courts ?? []).map((pts) => new THREE.ShapeGeometry(polyShape(pts)));
     return { sil, fit, courts };
@@ -68,12 +109,12 @@ function FloorPlate({ level, faded }: { level: LevelKey; faded: boolean }) {
         </mesh>
       ))}
       {geoms.fit.map((g, i) => (
-        <mesh key={`f${i}`} geometry={g} position={[0, 0, -0.51]}>
+        <mesh key={`f${i}`} geometry={g} position={[0, 0, -0.02]}>
           <meshLambertMaterial color="#7c4a2a" transparent opacity={faded ? 0.1 : 0.95} side={THREE.DoubleSide} />
         </mesh>
       ))}
       {geoms.courts.map((g, i) => (
-        <mesh key={`c${i}`} geometry={g} position={[0, 0, -0.51]}>
+        <mesh key={`c${i}`} geometry={g} position={[0, 0, -0.02]}>
           <meshLambertMaterial color="#9a7a4e" transparent opacity={faded ? 0.1 : 0.95} side={THREE.DoubleSide} />
         </mesh>
       ))}
@@ -216,6 +257,52 @@ const CAMS: Record<string, { pos: [number, number, number]; tgt: [number, number
   lower2: { pos: [46, 32, 36], tgt: [42, 0, -5] },
 };
 
+// White lane lines looping the track ring.
+function TrackLanes({ faded }: { faded: boolean }) {
+  const loops = useMemo(
+    () =>
+      [1.015, 1.07, 1.125].map((f) => {
+        const pts = scalePoly(INFIELD, f);
+        return new Float32Array(pts.flatMap(([px, py]) => [(px - CX) * S, LEVEL_Y.balcony + 0.04, (py - CY) * S]));
+      }),
+    [],
+  );
+  return (
+    <>
+      {loops.map((arr, i) => (
+        <lineLoop key={i}>
+          <bufferGeometry>
+            <bufferAttribute attach="attributes-position" args={[arr, 3]} />
+          </bufferGeometry>
+          <lineBasicMaterial color="#f0e6d6" transparent opacity={faded ? 0.06 : 0.55} />
+        </lineLoop>
+      ))}
+    </>
+  );
+}
+
+// Orange court rectangles on the entry floor, seen through the track well.
+function Courts({ faded }: { faded: boolean }) {
+  const courts: { c: [number, number]; }[] = [
+    { c: [1590, 660] },
+    { c: [1775, 830] },
+    { c: [1960, 1000] },
+  ];
+  return (
+    <>
+      {courts.map(({ c }, i) => {
+        const [x, z] = toWorld(c[0] / FLOORPLAN_W, c[1] / FLOORPLAN_H);
+        return (
+          <mesh key={i} position={[x, LEVEL_Y.entry + 0.03, z]} rotation={[-Math.PI / 2, 0, Math.PI / 4]}>
+            <planeGeometry args={[15, 26]} />
+            <meshLambertMaterial color="#b5682f" transparent opacity={faded ? 0.08 : 0.9} />
+          </mesh>
+        );
+      })}
+    </>
+  );
+}
+
 function Diag() {
   const { scene } = useThree();
   const n = useRef(0);
@@ -233,12 +320,33 @@ function Diag() {
 
 function CameraRig({ focus, controls }: { focus: LevelKey | null; controls: React.RefObject<OrbitControlsImpl | null> }) {
   const { camera } = useThree();
+  const animating = useRef(false);
   const target = CAMS[focus ?? "all"];
+
+  useEffect(() => {
+    animating.current = true;
+  }, [focus]);
+
+  useEffect(() => {
+    const c = controls.current;
+    if (!c) return;
+    const cancel = () => {
+      animating.current = false;
+    };
+    c.addEventListener("start", cancel);
+    return () => c.removeEventListener("start", cancel);
+  }, [controls]);
+
   useFrame(() => {
-    if (!controls.current) return;
-    camera.position.lerp(new THREE.Vector3(...target.pos), 0.06);
-    controls.current.target.lerp(new THREE.Vector3(...target.tgt), 0.06);
+    if (!controls.current || !animating.current) return;
+    const pos = new THREE.Vector3(...target.pos);
+    const tgt = new THREE.Vector3(...target.tgt);
+    camera.position.lerp(pos, 0.08);
+    controls.current.target.lerp(tgt, 0.08);
     controls.current.update();
+    if (camera.position.distanceTo(pos) < 0.2 && controls.current.target.distanceTo(tgt) < 0.2) {
+      animating.current = false;
+    }
   });
   return null;
 }
@@ -310,6 +418,8 @@ export function Facility3D({
         <FloorPlate key={lk} level={lk} faded={focus !== null && focus !== lk} />
       ))}
       <Rail faded={focus !== null && focus !== "balcony"} />
+      <TrackLanes faded={focus !== null && focus !== "balcony"} />
+      <Courts faded={focus !== null && focus !== "entry"} />
 
       {(focus === null || focus === "entry") && (
         <>
@@ -345,9 +455,13 @@ export function Facility3D({
         ref={controls}
         enabled={!arrange}
         enablePan={false}
+        enableDamping
+        dampingFactor={0.08}
+        zoomSpeed={0.9}
+        zoomToCursor
         minPolarAngle={0.25}
         maxPolarAngle={1.25}
-        minDistance={25}
+        minDistance={12}
         maxDistance={210}
       />
       <CameraRig focus={focus} controls={controls} />

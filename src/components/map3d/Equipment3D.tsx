@@ -103,7 +103,10 @@ export function EquipmentModel({ category }: { category: IconCategory }) {
           <Post p={[0.6, 0, -0.6]} h={2.35} r={0.06} />
           <Post p={[-0.6, 0, 0.6]} h={2.35} r={0.06} />
           <Post p={[0.6, 0, 0.6]} h={2.35} r={0.06} />
-          <Box p={[0, 2.35, 0]} s={[1.4, 0.1, 1.4]} c={FRAME} />
+          <Box p={[0, 2.35, -0.6]} s={[1.4, 0.09, 0.09]} c={FRAME} />
+          <Box p={[0, 2.35, 0.6]} s={[1.4, 0.09, 0.09]} c={FRAME} />
+          <Box p={[-0.6, 2.35, 0]} s={[0.09, 0.09, 1.3]} c={FRAME} />
+          <Box p={[0.6, 2.35, 0]} s={[0.09, 0.09, 1.3]} c={FRAME} />
           <mesh position={[0, 1.05, 0.62]} rotation={[0, 0, Math.PI / 2]} castShadow>
             <cylinderGeometry args={[0.03, 0.03, 1.7, 6]} />
             <meshLambertMaterial color={DARK} />
