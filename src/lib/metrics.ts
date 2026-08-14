@@ -112,3 +112,28 @@ export function periodRange(key: PeriodKey, now = new Date()): { start: Date; en
     }
   }
 }
+
+// Deterministic date formatting: explicit locale + timezone so server-rendered
+// HTML matches the client during hydration regardless of system defaults.
+const DATE_FMT = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+const DATETIME_FMT = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+export function fmtDate(d: Date): string {
+  return DATE_FMT.format(d);
+}
+
+export function fmtDateTime(d: Date): string {
+  return DATETIME_FMT.format(d);
+}

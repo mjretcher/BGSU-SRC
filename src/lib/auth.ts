@@ -1,9 +1,12 @@
-import { randomBytes, scrypt as scryptCb, timingSafeEqual, createHmac } from "node:crypto";
-import { promisify } from "node:util";
+import { randomBytes, scrypt as scryptCb, timingSafeEqual, createHmac, type ScryptOptions } from "node:crypto";
 import { cookies } from "next/headers";
 import { db } from "./db";
 
-const scrypt = promisify(scryptCb);
+function scrypt(password: string, salt: Buffer, keylen: number, options: ScryptOptions): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scryptCb(password, salt, keylen, options, (err, key) => (err ? reject(err) : resolve(key)));
+  });
+}
 
 const SCRYPT_N = 16384;
 const SCRYPT_R = 8;
@@ -22,11 +25,11 @@ function sessionSecret(): string {
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
-  const hash = (await scrypt(password, salt, KEY_LEN, {
+  const hash = await scrypt(password, salt, KEY_LEN, {
     N: SCRYPT_N,
     r: SCRYPT_R,
     p: SCRYPT_P,
-  })) as Buffer;
+  });
   return `scrypt:${SCRYPT_N}:${SCRYPT_R}:${SCRYPT_P}:${salt.toString("base64")}:${hash.toString("base64")}`;
 }
 
@@ -36,11 +39,11 @@ export async function verifyPassword(password: string, stored: string): Promise<
   const [, nStr, rStr, pStr, saltB64, hashB64] = parts;
   const salt = Buffer.from(saltB64, "base64");
   const expected = Buffer.from(hashB64, "base64");
-  const actual = (await scrypt(password, salt, expected.length, {
+  const actual = await scrypt(password, salt, expected.length, {
     N: Number(nStr),
     r: Number(rStr),
     p: Number(pStr),
-  })) as Buffer;
+  });
   return actual.length === expected.length && timingSafeEqual(actual, expected);
 }
 
