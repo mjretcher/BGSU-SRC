@@ -1,22 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  /* ── BGSU-SRC ops-center palette ── */
-  --bg: #0a0e14;
-  --bg-raised: #0f141d;
-  --surface: #131a26;
-  --surface-hover: #182130;
-  --line: rgba(148, 163, 184, 0.1);
-  --line-strong: rgba(148, 163, 184, 0.22);
+  /* ── BGSU SRC palette: brand orange on warm brown, like the building ── */
+  --bg: #120e0b;
+  --bg-raised: #181310;
+  --surface: #201914;
+  --surface-hover: #29201a;
+  --line: rgba(214, 186, 155, 0.1);
+  --line-strong: rgba(214, 186, 155, 0.22);
 
-  --text: #e6ebf4;
-  --text-secondary: #9aa5b8;
-  --text-faint: #5c6778;
+  --text: #f2ece5;
+  --text-secondary: #b3a698;
+  --text-faint: #7d7063;
 
-  /* Interactive accent — reserved for UI, never status */
-  --accent: #2dd4bf;
-  --accent-soft: rgba(45, 212, 191, 0.12);
-  --accent-glow: rgba(45, 212, 191, 0.35);
+  /* Interactive accent — BGSU orange, reserved for UI, never status */
+  --accent: #fe5000;
+  --accent-soft: rgba(254, 80, 0, 0.14);
+  --accent-glow: rgba(254, 80, 0, 0.4);
 
   /* Status language — exclusive to equipment state */
   --status-up: #34d399;
@@ -54,8 +54,8 @@ html {
 
 body {
   background:
-    radial-gradient(1200px 800px at 75% -10%, rgba(45, 212, 191, 0.06), transparent 60%),
-    radial-gradient(900px 600px at -10% 110%, rgba(56, 130, 246, 0.05), transparent 55%),
+    radial-gradient(1200px 800px at 75% -10%, rgba(254, 80, 0, 0.06), transparent 60%),
+    radial-gradient(900px 600px at -10% 110%, rgba(79, 44, 29, 0.35), transparent 55%),
     var(--bg);
   min-height: 100dvh;
   font-family: var(--font-geist-sans), system-ui, sans-serif;

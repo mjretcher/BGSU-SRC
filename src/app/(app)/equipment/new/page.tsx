@@ -156,7 +156,7 @@ export default function NewEquipmentPage() {
           <button
             onClick={save}
             disabled={busy || !f.itemId.trim() || !f.name.trim() || !f.brand.trim()}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-[#052e2b] transition hover:brightness-110 disabled:opacity-50"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:brightness-110 disabled:opacity-50"
           >
             {busy ? "Creating…" : "Create equipment"}
           </button>

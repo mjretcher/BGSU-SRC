@@ -32,7 +32,7 @@ interface Detail {
 const inputCls =
   "w-full rounded-lg border border-line-strong bg-bg-raised px-3 py-2 text-sm text-ink outline-none transition focus:border-accent";
 const btnPrimary =
-  "rounded-lg bg-accent px-3.5 py-2 text-sm font-medium text-[#052e2b] transition hover:brightness-110 disabled:opacity-50";
+  "rounded-lg bg-accent px-3.5 py-2 text-sm font-medium text-white transition hover:brightness-110 disabled:opacity-50";
 const btnGhost =
   "rounded-lg border border-line-strong px-3.5 py-2 text-sm text-ink-secondary transition hover:border-accent/50 hover:text-ink";
 

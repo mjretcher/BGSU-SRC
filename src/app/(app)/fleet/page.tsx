@@ -30,7 +30,7 @@ export default async function FleetPage({ searchParams }: { searchParams: Promis
         </div>
         <Link
           href="/equipment/new"
-          className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-[#052e2b] transition hover:brightness-110"
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:brightness-110"
         >
           + Add equipment
         </Link>

@@ -286,7 +286,7 @@ export function FacilityMap({
                           arrange ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
                         }`}
                         style={{
-                          background: "rgba(15,20,29,0.85)",
+                          background: "rgba(24,19,16,0.88)",
                           borderColor: TONE_COLOR[tone],
                           color: TONE_COLOR[tone],
                           boxShadow: `0 0 ${active ? 18 : 10}px ${TONE_GLOW[tone]}${
