@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { MapIcon, TableIcon, ChartIcon, ShieldIcon, LogoutIcon, UsersIcon } from "./icons";
+import { MapIcon, TableIcon, ChartIcon, ShieldIcon, LogoutIcon, UsersIcon, QrIcon } from "./icons";
 
 const NAV = [
   { href: "/", label: "Facility Map", Icon: MapIcon },
   { href: "/fleet", label: "Fleet", Icon: TableIcon },
   { href: "/reports", label: "Reports", Icon: ChartIcon },
   { href: "/warranty", label: "Warranty", Icon: ShieldIcon },
+  { href: "/labels", label: "QR Labels", Icon: QrIcon },
   { href: "/users", label: "Users", Icon: UsersIcon },
 ];
 

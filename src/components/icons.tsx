@@ -256,6 +256,17 @@ export const ClockIcon = (p: P) => (
   </Base>
 );
 
+export const QrIcon = (p: P) => (
+  <Base {...p}>
+    <path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9" />
+    <path d="M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9" />
+    <path d="M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15" />
+    <path d="M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15" />
+    <rect x="7.75" y="7.75" width="3.5" height="3.5" rx="0.6" />
+    <path d="M13.5 13.5h2.75v2.75" />
+  </Base>
+);
+
 export const LayersIcon = (p: P) => (
   <Base {...p}>
     <path d="m12 3 9 5-9 5-9-5Z" />
