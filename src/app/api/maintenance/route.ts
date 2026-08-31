@@ -4,7 +4,7 @@ import { guardMutation, audit } from "@/lib/api";
 
 // Routine maintenance — tracked separately from downtime (spec §4/§7).
 export async function POST(req: NextRequest) {
-  const guard = guardMutation(req);
+  const guard = await guardMutation(req);
   if ("error" in guard) return guard.error;
   const body = (await req.json().catch(() => null)) as {
     equipmentId?: string;

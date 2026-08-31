@@ -5,7 +5,7 @@ import { guardMutation, audit } from "@/lib/api";
 import { hashPassword } from "@/lib/auth";
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = guardMutation(req);
+  const guard = await guardMutation(req);
   if ("error" in guard) return guard.error;
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => null)) as {
@@ -19,7 +19,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const user = await db.user.findUnique({ where: { id } });
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const data: { name?: string; email?: string; passwordHash?: string } = {};
+  const data: { name?: string; email?: string; passwordHash?: string; sessionsValidFrom?: Date } = {};
   const changes: Record<string, unknown> = {};
   const before: Record<string, unknown> = {};
 
@@ -45,6 +45,10 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     const password = body.password?.trim() || randomBytes(9).toString("base64url");
     if (!body.password) generatedPassword = password;
     data.passwordHash = await hashPassword(password);
+    // End every session issued under the old password. Without this the reset
+    // changes only what a future sign-in needs, and whoever was already signed
+    // in stays signed in — which is precisely the case a reset is used for.
+    data.sessionsValidFrom = new Date();
     changes.passwordReset = true;
   }
 
@@ -56,7 +60,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 }
 
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = guardMutation(req);
+  const guard = await guardMutation(req);
   if ("error" in guard) return guard.error;
   const { id } = await ctx.params;
 

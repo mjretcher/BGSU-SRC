@@ -5,7 +5,7 @@ import { guardMutation, sessionFrom, audit } from "@/lib/api";
 import { hashPassword } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
-  if (!sessionFrom(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await sessionFrom(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const users = await db.user.findMany({
     orderBy: { createdAt: "asc" },
     select: { id: true, email: true, name: true, createdAt: true },
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = guardMutation(req);
+  const guard = await guardMutation(req);
   if ("error" in guard) return guard.error;
   const body = (await req.json().catch(() => null)) as { email?: string; name?: string; password?: string } | null;
   const email = body?.email?.trim().toLowerCase();

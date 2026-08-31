@@ -7,7 +7,7 @@ import type { EquipmentStatus, CauseCategory } from "@/generated/prisma/enums";
 // Update an open downtime event: change substatus, cause, notes, or close it
 // (optionally with a repair cost). Closing returns the machine to service.
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = guardMutation(req);
+  const guard = await guardMutation(req);
   if ("error" in guard) return guard.error;
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => null)) as {

@@ -4,7 +4,7 @@ import { guardMutation, sessionFrom, audit } from "@/lib/api";
 import { computeMetrics, trailing12mFlag, periodRange } from "@/lib/metrics";
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  if (!sessionFrom(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await sessionFrom(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await ctx.params;
   const equipment = await db.equipment.findUnique({
     where: { id },
@@ -39,7 +39,7 @@ const EDITABLE = [
 ] as const;
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = guardMutation(req);
+  const guard = await guardMutation(req);
   if ("error" in guard) return guard.error;
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
@@ -68,7 +68,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 }
 
 export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = guardMutation(req);
+  const guard = await guardMutation(req);
   if ("error" in guard) return guard.error;
   const { id } = await ctx.params;
   const equipment = await db.equipment.findUnique({

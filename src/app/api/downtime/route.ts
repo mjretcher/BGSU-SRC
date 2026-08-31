@@ -11,7 +11,7 @@ import type { EquipmentStatus, CauseCategory } from "@/generated/prisma/enums";
 // before: opens a live event and puts the equipment into the given down
 // status.
 export async function POST(req: NextRequest) {
-  const guard = guardMutation(req);
+  const guard = await guardMutation(req);
   if ("error" in guard) return guard.error;
   const body = (await req.json().catch(() => null)) as {
     equipmentId?: string;

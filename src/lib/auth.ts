@@ -58,13 +58,23 @@ function sign(payload: string): string {
 export function createSessionToken(userId: string, email: string): { token: string; expires: Date } {
   const expires = new Date();
   expires.setHours(23, 59, 59, 999); // fixed daily expiration
-  const payload = `${Buffer.from(userId).toString("base64url")}.${Buffer.from(email).toString("base64url")}.${expires.getTime()}`;
+  const issuedAt = Date.now();
+  const payload = [
+    Buffer.from(userId).toString("base64url"),
+    Buffer.from(email).toString("base64url"),
+    expires.getTime(),
+    issuedAt,
+  ].join(".");
   return { token: `${payload}.${sign(payload)}`, expires };
 }
 
 export type SessionUser = { userId: string; email: string };
+type VerifiedToken = SessionUser & { issuedAt: number };
 
-export function verifySessionToken(token: string | undefined): SessionUser | null {
+// Signature + expiry only. This says the cookie is authentic and unexpired; it
+// does NOT say the account still exists or that the session has not been
+// revoked since. Use resolveSession/getSession for that.
+export function verifySessionToken(token: string | undefined): VerifiedToken | null {
   if (!token) return null;
   const idx = token.lastIndexOf(".");
   if (idx < 0) return null;
@@ -74,18 +84,41 @@ export function verifySessionToken(token: string | undefined): SessionUser | nul
   const a = Buffer.from(sig);
   const b = Buffer.from(expectedSig);
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-  const [userB64, emailB64, expStr] = payload.split(".");
-  if (!userB64 || !emailB64 || !expStr) return null;
+  const [userB64, emailB64, expStr, issuedStr] = payload.split(".");
+  // issuedStr is absent on pre-revocation tokens; those are refused so the
+  // revocation check can never be skipped by presenting an older format.
+  if (!userB64 || !emailB64 || !expStr || !issuedStr) return null;
+  const issuedAt = Number(issuedStr);
+  if (!Number.isFinite(issuedAt)) return null;
   if (Date.now() > Number(expStr)) return null;
   return {
     userId: Buffer.from(userB64, "base64url").toString(),
     email: Buffer.from(emailB64, "base64url").toString(),
+    issuedAt,
   };
+}
+
+// Full check: authentic, unexpired, the account still exists, and the session
+// has not been revoked (by deletion, a password reset, or a manual sign-out-
+// everywhere). One indexed primary-key lookup.
+export async function resolveSession(token: string | undefined): Promise<SessionUser | null> {
+  const verified = verifySessionToken(token);
+  if (!verified) return null;
+  const user = await db.user.findUnique({
+    where: { id: verified.userId },
+    select: { id: true, email: true, sessionsValidFrom: true },
+  });
+  if (!user) return null; // deleted account
+  // Compare on whole seconds: the token stamps milliseconds, and a password
+  // reset in the same second should not be able to spare the session it means
+  // to end.
+  if (Math.floor(verified.issuedAt / 1000) < Math.floor(user.sessionsValidFrom.getTime() / 1000)) return null;
+  return { userId: user.id, email: user.email };
 }
 
 export async function getSession(): Promise<SessionUser | null> {
   const jar = await cookies();
-  return verifySessionToken(jar.get(SESSION_COOKIE)?.value);
+  return resolveSession(jar.get(SESSION_COOKIE)?.value);
 }
 
 // ── Login rate limiting (per-account and per-IP, in-memory) ─────────

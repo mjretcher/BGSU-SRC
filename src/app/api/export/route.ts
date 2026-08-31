@@ -9,7 +9,7 @@ import type { PeriodKey } from "@/lib/metrics";
 import { fleetPdf } from "./pdf";
 
 export async function GET(req: NextRequest) {
-  if (!sessionFrom(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await sessionFrom(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const sp = req.nextUrl.searchParams;
   const fmt = sp.get("fmt") ?? "csv";
   const period = (["week", "month", "ytd", "year"].includes(sp.get("period") ?? "") ? sp.get("period") : "year") as PeriodKey;

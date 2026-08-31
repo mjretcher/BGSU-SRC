@@ -73,6 +73,13 @@ model User {
   passwordHash String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  // Sessions are stateless HMAC cookies, so there is no session table to delete
+  // from. Every token carries the moment it was issued; any token issued before
+  // this instant is refused. Bumping it to now() is therefore "sign this user
+  // out everywhere", and it is what makes a password reset actually end the old
+  // sessions. Deleting the user works because the lookup itself then fails.
+  sessionsValidFrom DateTime @default(now())
 }
 
 model Equipment {

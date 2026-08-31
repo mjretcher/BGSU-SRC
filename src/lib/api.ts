@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifySessionToken, SESSION_COOKIE, type SessionUser } from "./auth";
+import { resolveSession, SESSION_COOKIE, type SessionUser } from "./auth";
 import { checkOrigin } from "./csrf";
 import { db } from "./db";
 import type { Prisma } from "@/generated/prisma/client";
 
-export function sessionFrom(req: NextRequest): SessionUser | null {
-  return verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
+// Async because resolving a session now checks the account still exists and the
+// session has not been revoked, which needs a database read. A purely
+// signature-based check cannot see a deleted user or a password reset.
+export async function sessionFrom(req: NextRequest): Promise<SessionUser | null> {
+  return resolveSession(req.cookies.get(SESSION_COOKIE)?.value);
 }
 
-// Guard for mutating routes: valid session + same-origin.
-export function guardMutation(req: NextRequest): { user: SessionUser } | { error: NextResponse } {
-  const user = sessionFrom(req);
+// Guard for mutating routes: live session + same-origin.
+export async function guardMutation(req: NextRequest): Promise<{ user: SessionUser } | { error: NextResponse }> {
+  const user = await sessionFrom(req);
   if (!user) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   if (!checkOrigin(req)) return { error: NextResponse.json({ error: "Invalid origin" }, { status: 403 }) };
   return { user };
