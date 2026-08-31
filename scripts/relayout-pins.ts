@@ -32,7 +32,11 @@ const ENTRY_MACHINES: RegionPlan = {
     ["SELECTORIZED_UPPER"],
     ["LEG_MACHINE"],
     ["CABLE_PULLEY", "FUNCTIONAL_TOOL"],
-    ["ROWER_SKI", "STAIR_CLIMBER", "BIKE", "TREADMILL", "ELLIPTICAL", "ARC_TRAINER", "CURVED_TREADMILL", "SPECIALTY", "BENCH", "RACK_SMITH", "DUMBBELL_RACK"],
+    // Note: RACK_SMITH / BENCH / DUMBBELL_RACK are deliberately absent here —
+    // they're the ENTRY_FREE set and already filtered out of `entry` before
+    // this plan runs (see the `FREE.includes` filter below), so listing them
+    // in this group was dead weight that could never match anything.
+    ["ROWER_SKI", "STAIR_CLIMBER", "BIKE", "TREADMILL", "ELLIPTICAL", "ARC_TRAINER", "CURVED_TREADMILL", "SPECIALTY"],
   ],
 };
 // Bottom group renders last = closest to the mezzanine rail (photo: treadmills

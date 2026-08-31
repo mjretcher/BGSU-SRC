@@ -216,7 +216,7 @@ function Unit({
   const attention = tone === "down" || tone === "warn";
   const group = useRef<THREE.Group>(null);
   const drag = useRef<{ plane: THREE.Plane; active: boolean }>({ plane: new THREE.Plane(), active: false });
-  const { camera, raycaster, pointer, gl } = useThree();
+  const { camera, raycaster, pointer } = useThree();
 
   useFrame(({ clock }) => {
     if (drag.current.active && group.current) {
@@ -240,13 +240,25 @@ function Unit({
     ev.stopPropagation();
     drag.current.plane.set(new THREE.Vector3(0, 1, 0), -y);
     drag.current.active = true;
-    gl.domElement.setPointerCapture(ev.pointerId);
+    // Capture on r3f's synthetic event target, not the raw canvas element.
+    // r3f tracks capture in its own internal map keyed by pointerId + the
+    // captured Object3D; once set, it force-routes every later pointermove/
+    // pointerup for this pointerId to this object WITHOUT re-raycasting.
+    // Calling gl.domElement.setPointerCapture() only sets native browser
+    // capture on the canvas, which r3f doesn't consult — so pointerup still
+    // depended on a fresh raycast hitting this unit's own meshes. Several
+    // glyphs (Rower/Ski, Squat Rack/Smith/Hack, Cable/Pulley, Dumbbell Rack)
+    // have every box/post offset away from the model's local origin — the
+    // exact point the item is dropped at — so that raycast silently missed
+    // and pointerup never fired, leaving the item glued to the cursor.
+    (ev.target as unknown as { setPointerCapture: (id: number) => void }).setPointerCapture(ev.pointerId);
   }
   function up(ev: ThreeEvent<PointerEvent>) {
     if (!drag.current.active || !group.current) return;
     drag.current.active = false;
     const p = group.current.position;
     onDragEnd(e.id, (p.x / S + CX) / FLOORPLAN_W, (p.z / S + CY) / FLOORPLAN_H);
+    (ev.target as unknown as { releasePointerCapture: (id: number) => void }).releasePointerCapture(ev.pointerId);
     ev.stopPropagation();
   }
 

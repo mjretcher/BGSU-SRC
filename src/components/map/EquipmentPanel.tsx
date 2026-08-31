@@ -10,7 +10,8 @@ import {
   CAUSE_LABEL, DOWN_STATUSES, MANUAL_MATCH_LABEL, LEVEL_LABEL, isDown,
 } from "@/lib/status";
 import { fmtDuration, fmtMoney } from "@/lib/metrics";
-import { CATEGORY_ICON, XIcon, WrenchIcon, BookIcon } from "../icons";
+import { CATEGORY_ICON, XIcon, WrenchIcon, BookIcon, ClockIcon } from "../icons";
+import { DurationPicker } from "../DurationPicker";
 
 interface Detail {
   equipment: {
@@ -38,7 +39,7 @@ const btnGhost =
 
 export function EquipmentPanel({ id, onClose }: { id: string; onClose: () => void }) {
   const [data, setData] = useState<Detail | null>(null);
-  const [mode, setMode] = useState<"view" | "report" | "close" | "maintenance">("view");
+  const [mode, setMode] = useState<"view" | "report" | "quick" | "close" | "maintenance">("view");
   const [busy, setBusy] = useState(false);
   const router = useRouter();
 
@@ -139,7 +140,12 @@ export function EquipmentPanel({ id, onClose }: { id: string; onClose: () => voi
             {/* Actions */}
             <div className="mt-5 flex flex-wrap gap-2">
               {e.status === "IN_SERVICE" && (
-                <button className={btnPrimary} onClick={() => setMode("report")}>Report downtime</button>
+                <>
+                  <button className={btnPrimary} onClick={() => setMode("report")}>Report downtime</button>
+                  <button className={btnGhost} onClick={() => setMode("quick")}>
+                    <span className="flex items-center gap-1.5"><ClockIcon className="h-4 w-4" /> Quick log (already fixed)</span>
+                  </button>
+                </>
               )}
               {openEvent && (
                 <button className={btnPrimary} onClick={() => setMode("close")}>Close event</button>
@@ -168,16 +174,47 @@ export function EquipmentPanel({ id, onClose }: { id: string; onClose: () => voi
               />
             )}
 
+            {mode === "quick" && (
+              <QuickLogForm
+                busy={busy}
+                onCancel={() => setMode("view")}
+                onSubmit={(durationMs, cause, notes, repairCost) => {
+                  const closedAt = new Date();
+                  const openedAt = new Date(closedAt.getTime() - durationMs);
+                  return mutate(() =>
+                    fetch("/api/downtime", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        equipmentId: e.id,
+                        cause,
+                        notes,
+                        repairCost,
+                        openedAt: openedAt.toISOString(),
+                        closedAt: closedAt.toISOString(),
+                      }),
+                    }),
+                  );
+                }}
+              />
+            )}
+
             {mode === "close" && openEvent && (
               <CloseForm
                 busy={busy}
                 onCancel={() => setMode("view")}
-                onSubmit={(repairCost, notes, retire) =>
+                onSubmit={(repairCost, notes, retire, backdateMs) =>
                   mutate(() =>
                     fetch(`/api/downtime/${openEvent.id}`, {
                       method: "PATCH",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ close: true, repairCost, notes, retire }),
+                      body: JSON.stringify({
+                        close: true,
+                        repairCost,
+                        notes,
+                        retire,
+                        ...(backdateMs ? { closedAt: new Date(Date.now() - backdateMs).toISOString() } : {}),
+                      }),
                     }),
                   )
                 }
@@ -369,16 +406,74 @@ function ReportForm({
   );
 }
 
+function QuickLogForm({
+  busy, onSubmit, onCancel,
+}: {
+  busy: boolean;
+  onSubmit: (durationMs: number, cause: CauseCategory, notes: string, repairCost: string) => void;
+  onCancel: () => void;
+}) {
+  const [durationMs, setDurationMs] = useState<number | null>(5 * 60_000);
+  const [cause, setCause] = useState<CauseCategory>("UNKNOWN_OTHER");
+  const [notes, setNotes] = useState("");
+  const [cost, setCost] = useState("");
+  return (
+    <div className="mt-5 rounded-xl border border-warn/30 bg-warn/5 p-4">
+      <h3 className="text-sm font-medium text-ink">Quick log — already fixed</h3>
+      <p className="mt-1 text-[12px] text-[color:var(--text-faint)]">
+        For a fix staff made on the spot, no parts ordered. Logs a downtime event that&rsquo;s already closed, ending now —
+        it still counts toward % downtime, MTTR, and MTBF like any other event.
+      </p>
+      <div className="mt-3 space-y-3">
+        <label className="block text-[12px] text-ink-secondary">
+          How long was it down?
+          <div className="mt-1">
+            <DurationPicker valueMs={durationMs} onChange={setDurationMs} />
+          </div>
+        </label>
+        <label className="block text-[12px] text-ink-secondary">
+          Cause
+          <select className={inputCls + " mt-1"} value={cause} onChange={(e) => setCause(e.target.value as CauseCategory)}>
+            {(Object.keys(CAUSE_LABEL) as CauseCategory[]).map((c) => (
+              <option key={c} value={c}>{CAUSE_LABEL[c]}</option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-[12px] text-ink-secondary">
+          Repair cost (optional)
+          <input className={inputCls + " mt-1"} type="number" min="0" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="0.00" />
+        </label>
+        <label className="block text-[12px] text-ink-secondary">
+          Notes
+          <textarea className={inputCls + " mt-1"} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="What was wrong, what fixed it…" />
+        </label>
+        <div className="flex gap-2">
+          <button
+            className={btnPrimary}
+            disabled={busy || !durationMs}
+            onClick={() => durationMs && onSubmit(durationMs, cause, notes, cost)}
+          >
+            Log it
+          </button>
+          <button className={btnGhost} onClick={onCancel}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CloseForm({
   busy, onSubmit, onCancel,
 }: {
   busy: boolean;
-  onSubmit: (repairCost: string, notes: string, retire: boolean) => void;
+  onSubmit: (repairCost: string, notes: string, retire: boolean, backdateMs: number | null) => void;
   onCancel: () => void;
 }) {
   const [cost, setCost] = useState("");
   const [notes, setNotes] = useState("");
   const [retire, setRetire] = useState(false);
+  const [backdate, setBackdate] = useState(false);
+  const [backdateMs, setBackdateMs] = useState<number | null>(20 * 60_000);
   return (
     <div className="mt-5 rounded-xl border border-up/30 bg-up/5 p-4">
       <h3 className="text-sm font-medium text-ink">Close event</h3>
@@ -392,11 +487,27 @@ function CloseForm({
           <textarea className={inputCls + " mt-1"} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="What fixed it?" />
         </label>
         <label className="flex items-center gap-2 text-[13px] text-ink-secondary">
+          <input type="checkbox" checked={backdate} onChange={(e) => setBackdate(e.target.checked)} className="accent-[var(--accent)]" />
+          It actually finished earlier than right now
+        </label>
+        {backdate && (
+          <label className="block text-[12px] text-ink-secondary">
+            How long ago did it finish?
+            <div className="mt-1">
+              <DurationPicker valueMs={backdateMs} onChange={setBackdateMs} />
+            </div>
+          </label>
+        )}
+        <label className="flex items-center gap-2 text-[13px] text-ink-secondary">
           <input type="checkbox" checked={retire} onChange={(e) => setRetire(e.target.checked)} className="accent-[var(--status-down)]" />
           Retire this equipment instead of returning it to service
         </label>
         <div className="flex gap-2">
-          <button className={btnPrimary} disabled={busy} onClick={() => onSubmit(cost, notes, retire)}>
+          <button
+            className={btnPrimary}
+            disabled={busy || (backdate && !backdateMs)}
+            onClick={() => onSubmit(cost, notes, retire, backdate ? backdateMs : null)}
+          >
             {retire ? "Close & retire" : "Close — back in service"}
           </button>
           <button className={btnGhost} onClick={onCancel}>Cancel</button>

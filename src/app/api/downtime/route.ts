@@ -4,7 +4,12 @@ import { guardMutation, audit } from "@/lib/api";
 import { DOWN_STATUSES } from "@/lib/status";
 import type { EquipmentStatus, CauseCategory } from "@/generated/prisma/enums";
 
-// Open a downtime event (any user, no approval routing — spec §2).
+// Open a downtime event (any user, no approval routing — spec §2). When
+// `closedAt` is supplied, the event is created already resolved in one shot
+// — the "staff fixed it in 5/20 minutes, no parts ordered" quick-log path —
+// and equipment status never leaves IN_SERVICE. Without it, this behaves as
+// before: opens a live event and puts the equipment into the given down
+// status.
 export async function POST(req: NextRequest) {
   const guard = guardMutation(req);
   if ("error" in guard) return guard.error;
@@ -13,12 +18,32 @@ export async function POST(req: NextRequest) {
     status?: EquipmentStatus;
     cause?: CauseCategory;
     notes?: string;
+    openedAt?: string;
+    closedAt?: string;
+    repairCost?: number | string | null;
   } | null;
   if (!body?.equipmentId) return NextResponse.json({ error: "equipmentId required" }, { status: 400 });
 
   const status = body.status ?? "DOWN_REPORTED";
   if (!DOWN_STATUSES.includes(status)) {
     return NextResponse.json({ error: "status must be a Down status" }, { status: 400 });
+  }
+
+  let openedAt: Date | undefined;
+  let closedAt: Date | undefined;
+  if (body.closedAt) {
+    closedAt = new Date(body.closedAt);
+    openedAt = body.openedAt ? new Date(body.openedAt) : new Date();
+    if (Number.isNaN(openedAt.getTime()) || Number.isNaN(closedAt.getTime()) || closedAt <= openedAt) {
+      return NextResponse.json({ error: "closedAt must be after openedAt" }, { status: 400 });
+    }
+  }
+  const repairCost =
+    body.repairCost === null || body.repairCost === undefined || body.repairCost === ""
+      ? null
+      : Number(body.repairCost);
+  if (repairCost !== null && (!Number.isFinite(repairCost) || repairCost < 0)) {
+    return NextResponse.json({ error: "Invalid repair cost" }, { status: 400 });
   }
 
   const equipment = await db.equipment.findUnique({
@@ -39,17 +64,28 @@ export async function POST(req: NextRequest) {
       status,
       cause: body.cause ?? "UNKNOWN_OTHER",
       notes: body.notes || null,
+      ...(openedAt ? { openedAt } : {}),
+      ...(closedAt ? { closedAt, repairCost } : {}),
     },
   });
-  await db.equipment.update({ where: { id: equipment.id }, data: { status } });
+  // A quick-logged (already-closed) event never moves the equipment off
+  // IN_SERVICE; a live-opened one takes on the reported down status.
+  if (!closedAt) {
+    await db.equipment.update({ where: { id: equipment.id }, data: { status } });
+  }
 
-  await audit(guard.user.email, "downtime.opened", "DowntimeEvent", event.id, { equipmentStatus: equipment.status }, {
+  await audit(guard.user.email, closedAt ? "downtime.quick_logged" : "downtime.opened", "DowntimeEvent", event.id, { equipmentStatus: equipment.status }, {
     equipmentId: equipment.id,
     itemId: equipment.itemId,
     status,
     cause: event.cause,
     notes: event.notes,
+    openedAt: event.openedAt,
+    closedAt: event.closedAt,
   });
 
-  return NextResponse.json({ ok: true, event: { ...event, repairCost: null } });
+  return NextResponse.json({
+    ok: true,
+    event: { ...event, repairCost: event.repairCost?.toString() ?? null },
+  });
 }

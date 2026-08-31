@@ -5,12 +5,28 @@ import type { BuildingLevel, IconCategory } from "@/generated/prisma/enums";
 
 const LEVELS: BuildingLevel[] = ["ENTRY", "BALCONY", "LOWER_2"];
 
-// Default pin position per level: center of that level's fitness zone.
+// Default pin position per level: center of that level's fitness zone. Every
+// new item used to land on this exact point — fine for the first item on a
+// level, but the second one dropped on the same coordinates as the first,
+// invisibly. In arrange mode a raycast only ever resolves a click to
+// whichever pin is nearest the camera, so the one underneath became
+// permanently unreachable — it could never be selected or dragged, with no
+// other UI (list view, coordinate field, etc.) to move or even find it. New
+// items are now nudged along a small spiral so each one starts at a
+// distinct spot, still centered on the same zone.
 const LEVEL_DEFAULT_POS: Record<BuildingLevel, { x: number; y: number }> = {
   ENTRY: { x: 0.33, y: 0.59 },
   BALCONY: { x: 0.31, y: 0.5 },
   LOWER_2: { x: 0.486, y: 0.41 },
 };
+
+function spiralOffset(index: number): { dx: number; dy: number } {
+  if (index === 0) return { dx: 0, dy: 0 };
+  const step = 0.012; // ~1.2% of the floor image; visibly distinct, still on-zone
+  const angle = index * 2.4; // golden-angle-ish spread so pins fan out, not grid-lock
+  const r = step * Math.sqrt(index);
+  return { dx: r * Math.cos(angle), dy: r * Math.sin(angle) };
+}
 
 export async function POST(req: NextRequest) {
   const guard = guardMutation(req);
@@ -48,7 +64,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Item ID ${itemId} is already in use by "${clash.name}"` }, { status: 409 });
   }
 
-  const pos = LEVEL_DEFAULT_POS[body.level];
+  const existingOnLevel = await db.equipment.count({ where: { level: body.level } });
+  const base = LEVEL_DEFAULT_POS[body.level];
+  const { dx, dy } = spiralOffset(existingOnLevel);
+  const pos = { x: base.x + dx, y: base.y + dy };
   const equipment = await db.equipment.create({
     data: {
       itemId,
