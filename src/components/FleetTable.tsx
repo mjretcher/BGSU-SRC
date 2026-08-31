@@ -3,8 +3,10 @@
 import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AnimatePresence } from "motion/react";
 import { STATUS_SHORT, STATUS_TONE, TONE_COLOR, LEVEL_LABEL, ICON_LABEL } from "@/lib/status";
-import { CATEGORY_ICON } from "./icons";
+import { CATEGORY_ICON, ClockIcon } from "./icons";
+import { EquipmentPanel } from "./map/EquipmentPanel";
 import type { IconCategory } from "@/generated/prisma/enums";
 import { fmtDuration, fmtMoney } from "@/lib/metrics";
 import type { EquipmentStatus, BuildingLevel } from "@/generated/prisma/enums";
@@ -35,6 +37,7 @@ export function FleetTable({ rows, period }: { rows: FleetRowSerialized[]; perio
   const [onlyFlagged, setOnlyFlagged] = useState(false);
   const [sort, setSort] = useState<SortKey>("type");
   const [dir, setDir] = useState<1 | -1>(-1);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     let out = rows;
@@ -94,6 +97,7 @@ export function FleetTable({ rows, period }: { rows: FleetRowSerialized[]; perio
   }
 
   return (
+    <>
     <div>
       <div className="flex flex-wrap items-center gap-2.5">
         <input
@@ -186,17 +190,26 @@ export function FleetTable({ rows, period }: { rows: FleetRowSerialized[]; perio
                 )}
                 <tr className="border-b border-line/50 transition last:border-0 hover:bg-surface-hover">
                   <td className="px-3 py-2.5">
-                    <Link href={`/equipment/${r.id}`} className="group block">
-                      <span className="flex items-center gap-2">
-                        {r.flagged && <span className="text-down" title={`${r.flagPct.toFixed(1)}% trailing 12 mo`}>⚑</span>}
-                        <span className="font-medium text-ink transition group-hover:text-accent">{r.name}</span>
-                      </span>
-                      <span className="mt-0.5 block text-[12px] text-ink-secondary">
-                        {r.brand}
-                        {r.model && <span className="font-mono"> · {r.model}</span>}
-                        <span className="text-[color:var(--text-faint)]"> · #{r.itemId} · {LEVEL_LABEL[r.level as BuildingLevel]}</span>
-                      </span>
-                    </Link>
+                    <div className="group flex items-start justify-between gap-2">
+                      <Link href={`/equipment/${r.id}`} className="block min-w-0">
+                        <span className="flex items-center gap-2">
+                          {r.flagged && <span className="text-down" title={`${r.flagPct.toFixed(1)}% trailing 12 mo`}>⚑</span>}
+                          <span className="truncate font-medium text-ink transition group-hover:text-accent">{r.name}</span>
+                        </span>
+                        <span className="mt-0.5 block text-[12px] text-ink-secondary">
+                          {r.brand}
+                          {r.model && <span className="font-mono"> · {r.model}</span>}
+                          <span className="text-[color:var(--text-faint)]"> · #{r.itemId} · {LEVEL_LABEL[r.level as BuildingLevel]}</span>
+                        </span>
+                      </Link>
+                      <button
+                        onClick={() => setSelectedId(r.id)}
+                        title="Log or manage downtime — same actions as clicking this item on the floor map"
+                        className="shrink-0 rounded-lg border border-line-strong p-1.5 text-ink-secondary opacity-0 transition group-hover:opacity-100 hover:border-accent/50 hover:text-accent focus:opacity-100"
+                      >
+                        <ClockIcon className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </td>
                   <td className="whitespace-nowrap px-3 py-2.5">
                     <span className="flex items-center gap-1.5 text-[13px]" style={{ color: TONE_COLOR[tone] }}>
@@ -223,5 +236,9 @@ export function FleetTable({ rows, period }: { rows: FleetRowSerialized[]; perio
         </table>
       </div>
     </div>
+    <AnimatePresence>
+      {selectedId && <EquipmentPanel key={selectedId} id={selectedId} onClose={() => setSelectedId(null)} />}
+    </AnimatePresence>
+    </>
   );
 }

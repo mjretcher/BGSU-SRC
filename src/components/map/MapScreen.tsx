@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { AnimatePresence } from "motion/react";
 import type { MapEquipment } from "./FacilityMap";
@@ -21,6 +21,28 @@ const LEVEL_TABS: { key: LevelKey; label: string }[] = [
   { key: "lower2", label: "Lower Level II" },
 ];
 
+// Any equipment created before the create-route jitter fix — or otherwise
+// left at an identical mapX/mapY — sits exactly on top of another pin in 3D
+// space. A click there only ever resolves (via raycast) to whichever one is
+// nearest the camera, so the other is stuck: unselectable, undraggable, with
+// no other UI to reach it. This spreads exact/near-exact duplicates apart
+// for display only; the DB value isn't touched until the pin is actually
+// dragged, at which point it saves its own distinct position and never
+// needs spreading again.
+function deoverlap(list: MapEquipment[]): MapEquipment[] {
+  const EPS = 0.004;
+  const seen = new Map<string, number>();
+  return list.map((e) => {
+    const key = `${e.level}:${Math.round(e.mapX / EPS)}:${Math.round(e.mapY / EPS)}`;
+    const n = seen.get(key) ?? 0;
+    seen.set(key, n + 1);
+    if (n === 0) return e;
+    const angle = n * 2.4;
+    const r = EPS * 1.5 * Math.sqrt(n);
+    return { ...e, mapX: e.mapX + r * Math.cos(angle), mapY: e.mapY + r * Math.sin(angle) };
+  });
+}
+
 export function MapScreen({
   equipment,
   counts,
@@ -34,6 +56,8 @@ export function MapScreen({
   const [sceneKey, setSceneKey] = useState(0);
   const [local, setLocal] = useState(equipment);
   const [undoStack, setUndoStack] = useState<{ id: string; x: number; y: number; name: string }[]>([]);
+  // Recomputed only when a pin actually moves, not on every select/arrange/focus render.
+  const display = useMemo(() => deoverlap(local), [local]);
 
   async function persistMove(id: string, x: number, y: number) {
     setLocal((prev) => prev.map((e) => (e.id === id ? { ...e, mapX: x, mapY: y } : e)));
@@ -145,7 +169,7 @@ export function MapScreen({
         <div key={sceneKey} className="absolute inset-0">
           <Facility3D
             onContextLost={() => setSceneKey((k) => k + 1)}
-            equipment={local}
+            equipment={display}
             selectedId={selectedId}
             onSelect={setSelectedId}
             arrange={arrange}

@@ -249,6 +249,13 @@ export const BookIcon = (p: P) => (
   </Base>
 );
 
+export const ClockIcon = (p: P) => (
+  <Base {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 7.5V12l3.2 1.9" />
+  </Base>
+);
+
 export const LayersIcon = (p: P) => (
   <Base {...p}>
     <path d="m12 3 9 5-9 5-9-5Z" />

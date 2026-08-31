@@ -15,6 +15,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     cause?: CauseCategory;
     notes?: string;
     close?: boolean;
+    closedAt?: string;
     repairCost?: number | string | null;
     retire?: boolean;
   } | null;
@@ -34,11 +35,23 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     if (repairCost !== null && (!Number.isFinite(repairCost) || repairCost < 0)) {
       return NextResponse.json({ error: "Invalid repair cost" }, { status: 400 });
     }
+    // Defaults to "now", but staff closing the ticket after the actual fix
+    // (e.g. logging it at the end of a shift) can supply the real end time
+    // or a duration-derived one instead, so % downtime isn't inflated by
+    // however long the ticket happened to sit open before someone closed it.
+    let closedAt = new Date();
+    if (body.closedAt) {
+      const parsed = new Date(body.closedAt);
+      if (Number.isNaN(parsed.getTime()) || parsed <= event.openedAt) {
+        return NextResponse.json({ error: "closedAt must be after openedAt" }, { status: 400 });
+      }
+      closedAt = parsed;
+    }
     const nextEquipmentStatus: EquipmentStatus = body.retire ? "RETIRED" : "IN_SERVICE";
     const updated = await db.downtimeEvent.update({
       where: { id },
       data: {
-        closedAt: new Date(),
+        closedAt,
         repairCost,
         notes: body.notes !== undefined ? body.notes || null : undefined,
       },
