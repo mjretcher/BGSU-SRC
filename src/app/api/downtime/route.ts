@@ -58,16 +58,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "An open downtime event already exists" }, { status: 409 });
   }
 
-  const event = await db.downtimeEvent.create({
-    data: {
-      equipmentId: equipment.id,
-      status,
-      cause: body.cause ?? "UNKNOWN_OTHER",
-      notes: body.notes || null,
-      ...(openedAt ? { openedAt } : {}),
-      ...(closedAt ? { closedAt, repairCost } : {}),
-    },
-  });
+  // The check above is a read, and this is a write, so two concurrent reports on
+  // the same machine can both get past it. A partial unique index
+  // (equipmentId WHERE closedAt IS NULL) is what actually makes "one open event"
+  // true; catching its violation turns the loser of the race into the same 409
+  // the check would have produced. A quick log is created already closed, so it
+  // is outside the index and never conflicts.
+  let event;
+  try {
+    event = await db.downtimeEvent.create({
+      data: {
+        equipmentId: equipment.id,
+        status,
+        cause: body.cause ?? "UNKNOWN_OTHER",
+        notes: body.notes || null,
+        ...(openedAt ? { openedAt } : {}),
+        ...(closedAt ? { closedAt, repairCost } : {}),
+      },
+    });
+  } catch (err) {
+    if (typeof err === "object" && err !== null && "code" in err && err.code === "P2002") {
+      return NextResponse.json({ error: "An open downtime event already exists" }, { status: 409 });
+    }
+    throw err;
+  }
   // A quick-logged (already-closed) event never moves the equipment off
   // IN_SERVICE; a live-opened one takes on the reported down status.
   if (!closedAt) {

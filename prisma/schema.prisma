@@ -135,6 +135,12 @@ model DowntimeEvent {
 
   @@index([equipmentId, openedAt])
   @@index([closedAt])
+  // Also carries a partial unique index enforcing at most one OPEN event per
+  // equipment: UNIQUE (equipmentId) WHERE closedAt IS NULL. Prisma's schema
+  // language cannot express partial indexes, so it lives in raw SQL in
+  // migrations/20260831000000_one_open_downtime_event_per_equipment. Do not
+  // "fix" a drift warning by dropping it — POST /api/downtime relies on it to
+  // close the read-then-write race its own duplicate check cannot.
 }
 
 model MaintenanceRecord {

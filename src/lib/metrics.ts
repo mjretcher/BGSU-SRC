@@ -1,10 +1,44 @@
 import type { DowntimeEvent } from "@/generated/prisma/client";
 
-// A downtime interval clipped to a reporting period. Open events clip to now.
-function clippedMs(ev: Pick<DowntimeEvent, "openedAt" | "closedAt">, start: Date, end: Date): number {
-  const s = Math.max(ev.openedAt.getTime(), start.getTime());
-  const e = Math.min((ev.closedAt ?? new Date()).getTime(), end.getTime());
-  return Math.max(0, e - s);
+type Span = { start: number; end: number };
+
+// An event's wall-clock span. Open events run to `now`.
+function spanOf(ev: Pick<DowntimeEvent, "openedAt" | "closedAt">, now: number): Span {
+  return { start: ev.openedAt.getTime(), end: ev.closedAt?.getTime() ?? now };
+}
+
+// How much of a span falls inside a reporting period.
+function clip(sp: Span, start: number, end: number): number {
+  return Math.max(0, Math.min(sp.end, end) - Math.max(sp.start, start));
+}
+
+// Collapse events into non-overlapping outage intervals.
+//
+// Two events covering the same wall-clock time are ONE outage, not two. Summing
+// their spans separately double-counts the downtime: two identical 12h events in
+// a 24h period reported 100%, three reported 150%, even though downtimePct is
+// documented as 0-100 and feeds the 5% auto-flag, the exports, and the alert
+// sweep. Overlaps are reachable whenever a quick-log or a backdated close
+// describes a window another event already covers, and they also appear if two
+// open events ever coexist on one machine.
+//
+// Merging also repairs MTBF: the old gap loop compared each event to the one
+// before it by open time, so an overlapping pair produced a negative gap that
+// was silently skipped and MTBF collapsed to null. Gaps between merged outages
+// are real uptime.
+function mergeOutages(events: Pick<DowntimeEvent, "openedAt" | "closedAt">[], now: number): Span[] {
+  const spans = events
+    .map((ev) => spanOf(ev, now))
+    .filter((sp) => sp.end > sp.start) // zero-length and malformed spans contribute nothing
+    .sort((a, b) => a.start - b.start);
+
+  const merged: Span[] = [];
+  for (const sp of spans) {
+    const last = merged[merged.length - 1];
+    if (last && sp.start <= last.end) last.end = Math.max(last.end, sp.end);
+    else merged.push({ ...sp });
+  }
+  return merged;
 }
 
 export interface EquipmentMetrics {
@@ -22,26 +56,37 @@ export function computeMetrics(
   events: Pick<DowntimeEvent, "openedAt" | "closedAt" | "repairCost">[],
   start: Date,
   end: Date,
+  now: Date = new Date(),
 ): EquipmentMetrics {
-  const periodMs = Math.max(1, end.getTime() - start.getTime());
-  const inPeriod = events.filter((e) => clippedMs(e, start, end) > 0);
-  const downtimeMs = inPeriod.reduce((acc, e) => acc + clippedMs(e, start, end), 0);
+  const s = start.getTime();
+  const e = end.getTime();
+  const nowMs = now.getTime();
+  const periodMs = Math.max(1, e - s);
+
+  // Sum merged outages, not raw events, so overlapping records can't be counted
+  // twice. Merged intervals clipped to the period can never exceed the period,
+  // which is what keeps downtimePct within 0-100 by construction.
+  const outages = mergeOutages(events, nowMs);
+  const downtimeMs = outages.reduce((acc, sp) => acc + clip(sp, s, e), 0);
+
+  // eventCount stays a count of records that touch the period — two reports of
+  // the same outage are still two tickets, even though they are one outage.
+  const inPeriod = events.filter((ev) => clip(spanOf(ev, nowMs), s, e) > 0);
 
   const closed = events
-    .filter((e) => e.closedAt && e.closedAt >= start && e.closedAt <= end)
+    .filter((ev) => ev.closedAt && ev.closedAt >= start && ev.closedAt <= end)
     .sort((a, b) => a.openedAt.getTime() - b.openedAt.getTime());
   const mttrMs = closed.length
-    ? closed.reduce((acc, e) => acc + (e.closedAt!.getTime() - e.openedAt.getTime()), 0) / closed.length
+    ? closed.reduce((acc, ev) => acc + (ev.closedAt!.getTime() - ev.openedAt.getTime()), 0) / closed.length
     : null;
 
-  // MTBF: gaps between one event's close and the next event's open, within period
-  const ordered = [...events].sort((a, b) => a.openedAt.getTime() - b.openedAt.getTime());
+  // MTBF: real uptime between distinct outages, measured on the merged
+  // intervals so an overlapping pair reads as one failure rather than as a
+  // negative gap that gets dropped.
   const gaps: number[] = [];
-  for (let i = 1; i < ordered.length; i++) {
-    const prevClose = ordered[i - 1].closedAt;
-    if (!prevClose) continue;
-    const gap = ordered[i].openedAt.getTime() - prevClose.getTime();
-    if (gap > 0 && ordered[i].openedAt >= start && ordered[i].openedAt <= end) gaps.push(gap);
+  for (let i = 1; i < outages.length; i++) {
+    const gap = outages[i].start - outages[i - 1].end;
+    if (gap > 0 && outages[i].start >= s && outages[i].start <= e) gaps.push(gap);
   }
   const mtbfMs = gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : null;
 
@@ -66,11 +111,12 @@ export function computeMetrics(
 export function trailing12mFlag(
   events: Pick<DowntimeEvent, "openedAt" | "closedAt" | "repairCost">[],
   threshold = 5,
+  now: Date = new Date(),
 ): { flagged: boolean; pct: number } {
-  const end = new Date();
+  const end = now;
   const start = new Date(end);
   start.setFullYear(start.getFullYear() - 1);
-  const m = computeMetrics(events, start, end);
+  const m = computeMetrics(events, start, end, now);
   return { flagged: m.downtimePct >= threshold, pct: m.downtimePct };
 }
 
