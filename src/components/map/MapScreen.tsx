@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { AnimatePresence } from "motion/react";
 import type { MapEquipment } from "./FacilityMap";
@@ -56,6 +56,8 @@ export function MapScreen({
   const [sceneKey, setSceneKey] = useState(0);
   const [local, setLocal] = useState(equipment);
   const [undoStack, setUndoStack] = useState<{ id: string; x: number; y: number; name: string }[]>([]);
+  // Recomputed only when a pin actually moves, not on every select/arrange/focus render.
+  const display = useMemo(() => deoverlap(local), [local]);
 
   async function persistMove(id: string, x: number, y: number) {
     setLocal((prev) => prev.map((e) => (e.id === id ? { ...e, mapX: x, mapY: y } : e)));
@@ -167,7 +169,7 @@ export function MapScreen({
         <div key={sceneKey} className="absolute inset-0">
           <Facility3D
             onContextLost={() => setSceneKey((k) => k + 1)}
-            equipment={deoverlap(local)}
+            equipment={display}
             selectedId={selectedId}
             onSelect={setSelectedId}
             arrange={arrange}
