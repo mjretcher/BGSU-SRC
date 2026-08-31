@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeMetrics, trailing12mFlag } from "./metrics";
+import { computeMetrics, groupBy, overlappingPeriod, trailing12mFlag } from "./metrics";
 
 // computeMetrics is the one pure function the whole product rests on: its
 // downtimePct drives the 5% auto-flag (spec §7), the fleet table, the PDF and
@@ -188,5 +188,40 @@ describe("trailing12mFlag", () => {
     const dupes = [daysDownEndingAt(10), daysDownEndingAt(10), daysDownEndingAt(10)];
     const r = trailing12mFlag(dupes as unknown as Events, 5, NOW);
     expect(r.flagged).toBe(false);
+  });
+});
+
+describe("groupBy", () => {
+  it("buckets rows by key, preserving order within a bucket", () => {
+    const rows = [
+      { id: "a", n: 1 }, { id: "b", n: 2 }, { id: "a", n: 3 }, { id: "a", n: 4 },
+    ];
+    const g = groupBy(rows, (r) => r.id);
+    expect(g.get("a")!.map((r) => r.n)).toEqual([1, 3, 4]);
+    expect(g.get("b")!.map((r) => r.n)).toEqual([2]);
+    expect(g.get("missing")).toBeUndefined();
+  });
+
+  it("handles an empty input", () => {
+    expect(groupBy([], (r: { id: string }) => r.id).size).toBe(0);
+  });
+});
+
+describe("overlappingPeriod", () => {
+  // Guards the correctness half of the query change: a flat cutoff on openedAt
+  // drops long-running outages that began before the window and are still open.
+  const start = at("2026-08-01T00:00:00.000Z");
+  const end = at("2026-09-01T00:00:00.000Z");
+  const w = overlappingPeriod(start, end);
+
+  it("bounds the window on both sides", () => {
+    expect(w.openedAt.lte).toBe(end);
+    expect(w.OR).toEqual([{ closedAt: null }, { closedAt: { gte: start } }]);
+  });
+
+  it("keeps still-open events regardless of how long ago they opened", () => {
+    // An open event has closedAt null, which the first OR branch matches, so a
+    // two-year-old outage that is still running stays in the result.
+    expect(w.OR[0]).toEqual({ closedAt: null });
   });
 });

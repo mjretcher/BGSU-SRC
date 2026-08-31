@@ -1,5 +1,41 @@
 import type { DowntimeEvent } from "@/generated/prisma/client";
 
+/**
+ * Group rows by key.
+ *
+ * The three call sites that group downtime events by equipment each did
+ * `map.set(k, [...(map.get(k) ?? []), row])`, rebuilding the whole array once
+ * per row — quadratic in the number of events on a single machine. Pushing into
+ * the existing array is the same code path without the copying.
+ */
+export function groupBy<T, K>(rows: T[], key: (row: T) => K): Map<K, T[]> {
+  const out = new Map<K, T[]>();
+  for (const row of rows) {
+    const k = key(row);
+    const bucket = out.get(k);
+    if (bucket) bucket.push(row);
+    else out.set(k, [row]);
+  }
+  return out;
+}
+
+/**
+ * Prisma filter selecting events that overlap [start, end].
+ *
+ * Fleet and alert queries used to fetch every downtime event ever recorded on
+ * every page view, when nothing needs more than the reporting window. Filtering
+ * on openedAt alone would be wrong in the other direction: an event opened
+ * before the window and still open covers all of it, which is exactly the
+ * long-running outage worth reporting. An open event has no closedAt, so it
+ * overlaps whenever it began before the window ends.
+ */
+export function overlappingPeriod(start: Date, end: Date) {
+  return {
+    openedAt: { lte: end },
+    OR: [{ closedAt: null }, { closedAt: { gte: start } }],
+  };
+}
+
 type Span = { start: number; end: number };
 
 // An event's wall-clock span. Open events run to `now`.

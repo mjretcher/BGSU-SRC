@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { trailing12mFlag } from "@/lib/metrics";
+import { trailing12mFlag, groupBy, overlappingPeriod } from "@/lib/metrics";
 import { STATUS_TONE } from "@/lib/status";
 import { MapScreen } from "@/components/map/MapScreen";
 import type { MapEquipment } from "@/components/map/FacilityMap";
@@ -7,6 +7,10 @@ import type { MapEquipment } from "@/components/map/FacilityMap";
 export const dynamic = "force-dynamic";
 
 export default async function MapPage() {
+  const now = new Date();
+  const flagStart = new Date(now);
+  flagStart.setFullYear(flagStart.getFullYear() - 1);
+
   const [equipment, recentEvents] = await Promise.all([
     db.equipment.findMany({
       select: {
@@ -16,15 +20,16 @@ export default async function MapPage() {
       orderBy: { itemId: "asc" },
     }),
     db.downtimeEvent.findMany({
-      where: { openedAt: { gte: new Date(Date.now() - 400 * 86_400_000) } },
+      // The flag is a trailing-12-month measure, so that is the window to
+      // fetch. Filtering on openedAt alone (as a flat 400-day cutoff did)
+      // drops an outage that began earlier and is still open — the longest
+      // outages, and the ones most worth flagging.
+      where: overlappingPeriod(flagStart, now),
       select: { equipmentId: true, openedAt: true, closedAt: true, repairCost: true },
     }),
   ]);
 
-  const eventsByEquipment = new Map<string, typeof recentEvents>();
-  for (const ev of recentEvents) {
-    eventsByEquipment.set(ev.equipmentId, [...(eventsByEquipment.get(ev.equipmentId) ?? []), ev]);
-  }
+  const eventsByEquipment = groupBy(recentEvents, (ev) => ev.equipmentId);
 
   const list: MapEquipment[] = equipment.map((e) => ({
     id: e.id,
@@ -36,7 +41,7 @@ export default async function MapPage() {
     mapY: e.mapY ?? 0.5,
     iconCategory: e.iconCategory,
     status: e.status,
-    flagged: trailing12mFlag(eventsByEquipment.get(e.id) ?? []).flagged,
+    flagged: trailing12mFlag(eventsByEquipment.get(e.id) ?? [], 5, now).flagged,
   }));
 
   const counts = {

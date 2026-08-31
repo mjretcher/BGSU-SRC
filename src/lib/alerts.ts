@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { trailing12mFlag } from "./metrics";
+import { trailing12mFlag, groupBy, overlappingPeriod } from "./metrics";
 import { makeEmailProvider, recipientEmails } from "./notify";
 
 const DAY = 86_400_000;
@@ -47,17 +47,25 @@ export interface DowntimeFlag {
 }
 
 export async function downtimeFlags(): Promise<DowntimeFlag[]> {
+  const now = new Date();
+  const flagStart = new Date(now);
+  flagStart.setFullYear(flagStart.getFullYear() - 1);
+
   const [equipment, events] = await Promise.all([
     db.equipment.findMany({
       where: { status: { not: "RETIRED" } },
       select: { id: true, itemId: true, name: true },
     }),
-    db.downtimeEvent.findMany({ select: { equipmentId: true, openedAt: true, closedAt: true, repairCost: true } }),
+    db.downtimeEvent.findMany({
+      // Trailing 12 months is the whole basis of this flag; fetching the entire
+      // event history to compute it got slower every month.
+      where: overlappingPeriod(flagStart, now),
+      select: { equipmentId: true, openedAt: true, closedAt: true, repairCost: true },
+    }),
   ]);
-  const byEq = new Map<string, typeof events>();
-  for (const ev of events) byEq.set(ev.equipmentId, [...(byEq.get(ev.equipmentId) ?? []), ev]);
+  const byEq = groupBy(events, (ev) => ev.equipmentId);
   return equipment
-    .map((e) => ({ e, flag: trailing12mFlag(byEq.get(e.id) ?? []) }))
+    .map((e) => ({ e, flag: trailing12mFlag(byEq.get(e.id) ?? [], 5, now) }))
     .filter((x) => x.flag.flagged)
     .map((x) => ({ equipmentId: x.e.id, itemId: x.e.itemId, name: x.e.name, pct: x.flag.pct }))
     .sort((a, b) => b.pct - a.pct);
@@ -72,16 +80,25 @@ export async function runAlerts(): Promise<{ warrantySent: number; flagsSent: nu
   let warrantySent = 0;
   let flagsSent = 0;
 
+  // Dedupe used to run one findFirst per candidate alert, inside each loop.
+  // The whole window is one query: alerts already sent are a small set keyed by
+  // action and target. Entries are added as this run sends, so a repeat inside
+  // a single run is caught too.
+  const since = new Date(Date.now() - 25 * DAY);
+  const recentAlerts = await db.auditLog.findMany({
+    where: {
+      action: { in: ["alert.warranty", "alert.downtime_flag"] },
+      createdAt: { gte: since },
+      targetId: { not: null },
+    },
+    select: { action: true, targetId: true },
+  });
+  const alreadySent = new Set(recentAlerts.map((a) => `${a.action}:${a.targetId}`));
+
   const wAlerts = (await warrantyAlerts()).filter((a) => a.stage !== 0);
   for (const a of wAlerts) {
-    const dupe = await db.auditLog.findFirst({
-      where: {
-        action: "alert.warranty",
-        targetId: a.equipmentId,
-        createdAt: { gte: new Date(Date.now() - 25 * DAY) },
-      },
-    });
-    if (dupe) continue;
+    if (alreadySent.has(`alert.warranty:${a.equipmentId}`)) continue;
+    alreadySent.add(`alert.warranty:${a.equipmentId}`);
     await provider.send({
       to,
       subject: `[SRC] Warranty expires in ${a.daysLeft} days — ${a.name} (#${a.itemId})`,
@@ -101,14 +118,8 @@ export async function runAlerts(): Promise<{ warrantySent: number; flagsSent: nu
 
   const flags = await downtimeFlags();
   for (const f of flags) {
-    const dupe = await db.auditLog.findFirst({
-      where: {
-        action: "alert.downtime_flag",
-        targetId: f.equipmentId,
-        createdAt: { gte: new Date(Date.now() - 25 * DAY) },
-      },
-    });
-    if (dupe) continue;
+    if (alreadySent.has(`alert.downtime_flag:${f.equipmentId}`)) continue;
+    alreadySent.add(`alert.downtime_flag:${f.equipmentId}`);
     await provider.send({
       to,
       subject: `[SRC] Replacement review — ${f.name} (#${f.itemId}) at ${f.pct.toFixed(1)}% downtime`,
