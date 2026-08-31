@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { db } from "@/lib/db";
 import { guardMutation, sessionFrom, audit } from "@/lib/api";
 import { hashPassword } from "@/lib/auth";
+import { parseBody, createUserSchema } from "@/lib/validation";
 
 export async function GET(req: NextRequest) {
   if (!(await sessionFrom(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -16,17 +17,15 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const guard = await guardMutation(req);
   if ("error" in guard) return guard.error;
-  const body = (await req.json().catch(() => null)) as { email?: string; name?: string; password?: string } | null;
-  const email = body?.email?.trim().toLowerCase();
-  const name = body?.name?.trim();
-  if (!email || !name) return NextResponse.json({ error: "Email and name are required" }, { status: 400 });
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return NextResponse.json({ error: "Invalid email" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, createUserSchema);
+  if ("error" in parsed) return parsed.error;
+  const { email, name } = parsed.data;
+  const suppliedPassword = parsed.data.password;
+
   const existing = await db.user.findUnique({ where: { email } });
   if (existing) return NextResponse.json({ error: "A user with that email already exists" }, { status: 409 });
 
-  const password = body?.password?.trim() || randomBytes(9).toString("base64url");
+  const password = suppliedPassword || randomBytes(9).toString("base64url");
   const user = await db.user.create({
     data: { email, name, passwordHash: await hashPassword(password) },
   });
@@ -35,6 +34,6 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     user: { id: user.id, email: user.email, name: user.name },
-    generatedPassword: body?.password?.trim() ? undefined : password,
+    generatedPassword: suppliedPassword ? undefined : password,
   });
 }

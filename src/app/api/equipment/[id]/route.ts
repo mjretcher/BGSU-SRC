@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { guardMutation, sessionFrom, audit } from "@/lib/api";
 import { computeMetrics, trailing12mFlag, periodRange } from "@/lib/metrics";
+import { parseBody, updateEquipmentSchema } from "@/lib/validation";
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   if (!(await sessionFrom(req))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -31,30 +32,21 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   });
 }
 
-const EDITABLE = [
-  "name", "brand", "model", "modelNote", "serial", "vendor", "notes",
-  "manualUrl", "manualPdfUrl", "manualMatch", "manualComment",
-  "purchaseDate", "cost", "warrantyMonths", "warrantyExpiresAt",
-  "mapX", "mapY", "iconCategory", "level", "zone",
-] as const;
-
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const guard = await guardMutation(req);
   if ("error" in guard) return guard.error;
   const { id } = await ctx.params;
-  const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
-  if (!body) return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  // The schema is the editable-field list: anything it does not describe cannot
+  // reach the database, and everything it does describe arrives already the
+  // right type. Keys the caller omitted stay absent, so a partial update never
+  // clears a field it did not mention.
+  const parsed = await parseBody(req, updateEquipmentSchema);
+  if ("error" in parsed) return parsed.error;
+  const data = parsed.data;
 
   const existing = await db.equipment.findUnique({ where: { id } });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const data: Record<string, unknown> = {};
-  for (const key of EDITABLE) {
-    if (!(key in body)) continue;
-    let v = body[key];
-    if ((key === "purchaseDate" || key === "warrantyExpiresAt") && typeof v === "string") v = new Date(v);
-    data[key] = v;
-  }
   if (Object.keys(data).length === 0) return NextResponse.json({ error: "No editable fields" }, { status: 400 });
 
   const before: Record<string, unknown> = {};

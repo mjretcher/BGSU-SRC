@@ -8,6 +8,7 @@ import {
   SESSION_COOKIE,
 } from "@/lib/auth";
 import { checkOrigin } from "@/lib/csrf";
+import { parseBody, loginSchema } from "@/lib/validation";
 
 export async function POST(req: NextRequest) {
   if (!checkOrigin(req)) {
@@ -15,13 +16,9 @@ export async function POST(req: NextRequest) {
   }
 
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  const body = (await req.json().catch(() => null)) as { email?: string; password?: string } | null;
-  const email = body?.email?.trim().toLowerCase();
-  const password = body?.password;
-
-  if (!email || !password) {
-    return NextResponse.json({ error: "Email and password are required" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, loginSchema);
+  if ("error" in parsed) return parsed.error;
+  const { email, password } = parsed.data;
 
   if (!rateLimitCheck(`ip:${ip}`) || !rateLimitCheck(`acct:${email}`)) {
     await auditAuth(email, "auth.login_rate_limited", { ip });

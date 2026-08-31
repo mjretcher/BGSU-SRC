@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { guardMutation, audit } from "@/lib/api";
 import { DOWN_STATUSES } from "@/lib/status";
+import { parseBody, updateDowntimeSchema } from "@/lib/validation";
 import type { EquipmentStatus, CauseCategory } from "@/generated/prisma/enums";
 
 // Update an open downtime event: change substatus, cause, notes, or close it
@@ -10,16 +11,9 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const guard = await guardMutation(req);
   if ("error" in guard) return guard.error;
   const { id } = await ctx.params;
-  const body = (await req.json().catch(() => null)) as {
-    status?: EquipmentStatus;
-    cause?: CauseCategory;
-    notes?: string;
-    close?: boolean;
-    closedAt?: string;
-    repairCost?: number | string | null;
-    retire?: boolean;
-  } | null;
-  if (!body) return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+  const parsed = await parseBody(req, updateDowntimeSchema);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data;
 
   const event = await db.downtimeEvent.findUnique({ where: { id }, include: { equipment: true } });
   if (!event) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -28,24 +22,16 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const before = { status: event.status, cause: event.cause, notes: event.notes, equipmentStatus: event.equipment.status };
 
   if (body.close) {
-    const repairCost =
-      body.repairCost === null || body.repairCost === undefined || body.repairCost === ""
-        ? null
-        : Number(body.repairCost);
-    if (repairCost !== null && (!Number.isFinite(repairCost) || repairCost < 0)) {
-      return NextResponse.json({ error: "Invalid repair cost" }, { status: 400 });
-    }
+    const repairCost = body.repairCost;
     // Defaults to "now", but staff closing the ticket after the actual fix
     // (e.g. logging it at the end of a shift) can supply the real end time
     // or a duration-derived one instead, so % downtime isn't inflated by
     // however long the ticket happened to sit open before someone closed it.
-    let closedAt = new Date();
-    if (body.closedAt) {
-      const parsed = new Date(body.closedAt);
-      if (Number.isNaN(parsed.getTime()) || parsed <= event.openedAt) {
-        return NextResponse.json({ error: "closedAt must be after openedAt" }, { status: 400 });
-      }
-      closedAt = parsed;
+    // The schema guarantees a valid date; only the ordering against this
+    // event's own openedAt can be checked here.
+    const closedAt = body.closedAt ?? new Date();
+    if (closedAt <= event.openedAt) {
+      return NextResponse.json({ error: "closedAt must be after openedAt" }, { status: 400 });
     }
     const nextEquipmentStatus: EquipmentStatus = body.retire ? "RETIRED" : "IN_SERVICE";
     const updated = await db.downtimeEvent.update({

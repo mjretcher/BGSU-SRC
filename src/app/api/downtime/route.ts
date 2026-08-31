@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { guardMutation, audit } from "@/lib/api";
 import { DOWN_STATUSES } from "@/lib/status";
-import type { EquipmentStatus, CauseCategory } from "@/generated/prisma/enums";
+import { parseBody, openDowntimeSchema } from "@/lib/validation";
 
 // Open a downtime event (any user, no approval routing — spec §2). When
 // `closedAt` is supplied, the event is created already resolved in one shot
@@ -13,38 +13,24 @@ import type { EquipmentStatus, CauseCategory } from "@/generated/prisma/enums";
 export async function POST(req: NextRequest) {
   const guard = await guardMutation(req);
   if ("error" in guard) return guard.error;
-  const body = (await req.json().catch(() => null)) as {
-    equipmentId?: string;
-    status?: EquipmentStatus;
-    cause?: CauseCategory;
-    notes?: string;
-    openedAt?: string;
-    closedAt?: string;
-    repairCost?: number | string | null;
-  } | null;
-  if (!body?.equipmentId) return NextResponse.json({ error: "equipmentId required" }, { status: 400 });
+  const parsed = await parseBody(req, openDowntimeSchema);
+  if ("error" in parsed) return parsed.error;
+  const body = parsed.data;
 
   const status = body.status ?? "DOWN_REPORTED";
   if (!DOWN_STATUSES.includes(status)) {
     return NextResponse.json({ error: "status must be a Down status" }, { status: 400 });
   }
 
-  let openedAt: Date | undefined;
-  let closedAt: Date | undefined;
-  if (body.closedAt) {
-    closedAt = new Date(body.closedAt);
-    openedAt = body.openedAt ? new Date(body.openedAt) : new Date();
-    if (Number.isNaN(openedAt.getTime()) || Number.isNaN(closedAt.getTime()) || closedAt <= openedAt) {
-      return NextResponse.json({ error: "closedAt must be after openedAt" }, { status: 400 });
-    }
+  // A closed-on-arrival event is the quick-log path. openedAt defaults to now
+  // only when a closedAt was given without one; the schema has already checked
+  // that closedAt is later when both are present.
+  const closedAt = body.closedAt ?? undefined;
+  const openedAt = closedAt ? (body.openedAt ?? new Date()) : (body.openedAt ?? undefined);
+  if (closedAt && openedAt && closedAt <= openedAt) {
+    return NextResponse.json({ error: "closedAt must be after openedAt" }, { status: 400 });
   }
-  const repairCost =
-    body.repairCost === null || body.repairCost === undefined || body.repairCost === ""
-      ? null
-      : Number(body.repairCost);
-  if (repairCost !== null && (!Number.isFinite(repairCost) || repairCost < 0)) {
-    return NextResponse.json({ error: "Invalid repair cost" }, { status: 400 });
-  }
+  const repairCost = body.repairCost;
 
   const equipment = await db.equipment.findUnique({
     where: { id: body.equipmentId },
