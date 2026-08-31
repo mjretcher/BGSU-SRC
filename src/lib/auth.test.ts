@@ -10,9 +10,10 @@ process.env.DATABASE_URL ??= "postgresql://user:pass@127.0.0.1:5432/unused";
 
 let createSessionToken: typeof import("./auth").createSessionToken;
 let verifySessionToken: typeof import("./auth").verifySessionToken;
+let isSessionLive: typeof import("./auth").isSessionLive;
 
 beforeAll(async () => {
-  ({ createSessionToken, verifySessionToken } = await import("./auth"));
+  ({ createSessionToken, verifySessionToken, isSessionLive } = await import("./auth"));
 });
 
 const sign = (payload: string) => createHmac("sha256", SECRET).update(payload).digest("base64url");
@@ -75,5 +76,43 @@ describe("session tokens", () => {
     expect(verifySessionToken("")).toBeNull();
     expect(verifySessionToken("nodotshere")).toBeNull();
     expect(verifySessionToken("a.b.c.d.e")).toBeNull();
+  });
+});
+
+// The decision resolveSession makes once it has the user row. Kept free of I/O
+// so the revocation rules are pinned down without a database.
+describe("session revocation", () => {
+  const at = (ms: number) => ({ sessionsValidFrom: new Date(ms) });
+
+  it("ends the session of a deleted account", () => {
+    expect(isSessionLive(Date.now(), null)).toBe(false);
+  });
+
+  it("keeps a session issued after the cutoff", () => {
+    expect(isSessionLive(10_000, at(5_000))).toBe(true);
+  });
+
+  it("ends a session issued before the cutoff", () => {
+    expect(isSessionLive(5_000, at(10_000))).toBe(false);
+  });
+
+  it("keeps a session issued at exactly the cutoff", () => {
+    // The sign-in that immediately follows a reset stamps the same instant at
+    // worst; it must survive or a reset would lock the user out of their new
+    // password.
+    expect(isSessionLive(10_000, at(10_000))).toBe(true);
+  });
+
+  it("ends a session issued a single millisecond before the cutoff", () => {
+    // Rounding this comparison to whole seconds left sessions issued earlier in
+    // the same second alive through a password reset that meant to end them.
+    expect(isSessionLive(10_600, at(10_601))).toBe(false);
+    expect(isSessionLive(10_200, at(10_600))).toBe(false);
+  });
+
+  it("treats an untouched account as never revoked", () => {
+    // sessionsValidFrom defaults to row creation, so every later token is live.
+    const created = Date.parse("2026-01-01T00:00:00Z");
+    expect(isSessionLive(created + 1, at(created))).toBe(true);
   });
 });

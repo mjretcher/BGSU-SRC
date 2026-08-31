@@ -98,6 +98,19 @@ export function verifySessionToken(token: string | undefined): VerifiedToken | n
   };
 }
 
+// The revocation decision on its own, with no I/O, so it can be tested
+// directly. A token is live when the account still exists and the token was
+// issued no earlier than the account's cutoff.
+//
+// Compared in whole milliseconds, which is exact on both sides: the token
+// stamps Date.now(), and sessionsValidFrom is TIMESTAMP(3). Rounding to seconds
+// here would leave a sub-second window in which a password reset failed to
+// revoke a session issued moments before it.
+export function isSessionLive(issuedAt: number, user: { sessionsValidFrom: Date } | null): boolean {
+  if (!user) return false; // deleted account
+  return issuedAt >= user.sessionsValidFrom.getTime();
+}
+
 // Full check: authentic, unexpired, the account still exists, and the session
 // has not been revoked (by deletion, a password reset, or a manual sign-out-
 // everywhere). One indexed primary-key lookup.
@@ -108,11 +121,7 @@ export async function resolveSession(token: string | undefined): Promise<Session
     where: { id: verified.userId },
     select: { id: true, email: true, sessionsValidFrom: true },
   });
-  if (!user) return null; // deleted account
-  // Compare on whole seconds: the token stamps milliseconds, and a password
-  // reset in the same second should not be able to spare the session it means
-  // to end.
-  if (Math.floor(verified.issuedAt / 1000) < Math.floor(user.sessionsValidFrom.getTime() / 1000)) return null;
+  if (!user || !isSessionLive(verified.issuedAt, user)) return null;
   return { userId: user.id, email: user.email };
 }
 
